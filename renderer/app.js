@@ -265,10 +265,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  const btnIntroClose = document.getElementById('btn-intro-close');
-  if (btnIntroClose) {
-    btnIntroClose.onclick = () => api.closeWindow();
-  }
 
   // Helper: Update Catalog Heading Title dynamically
   function updateCatalogHeading() {
@@ -2681,9 +2677,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const updaterProgressSize = document.getElementById('updater-progress-size');
   const updaterProgressSpeed = document.getElementById('updater-progress-speed');
   const btnUpdaterCancel = document.getElementById('btn-updater-cancel');
+  const btnUpdaterBrowser = document.getElementById('btn-updater-browser');
   const btnUpdaterAction = document.getElementById('btn-updater-action');
 
-  let currentAppVersion = '2.0.3';
+  let currentAppVersion = '2.0.4';
   let isDownloadingUpdate = false;
 
   if (api && api.getAppVersion) {
@@ -2734,10 +2731,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (updaterProgressSize) updaterProgressSize.textContent = '0 MB / ...';
     if (updaterProgressSpeed) updaterProgressSpeed.textContent = '⚡ 0 MB/s';
 
+    if (btnUpdaterBrowser) {
+      btnUpdaterBrowser.style.display = 'inline-flex';
+      btnUpdaterBrowser.onclick = () => {
+        const url = updateInfo.downloadUrl || 'https://github.com/DePong-989/fdr-drama-dl-pro/releases/latest';
+        if (api && api.openExternal) {
+          api.openExternal(url);
+        } else {
+          window.open(url, '_blank');
+        }
+        showToast('🚀 កំពុងបើកតំណទាញយកក្នុង Browser / IDM (ល្បឿនលឿន)...');
+      };
+    }
+
     showUpdaterModal(
       `🚀 មានកំណែអាប់ដេតថ្មី v${updateInfo.latestVersion}!`,
       `កំណែថ្មីនេះមានការកែលម្អមុខងារ និងដំណើរការរលូនជាងមុន។ តើអ្នកចង់ទាញយកឥឡូវនេះទេ?`,
-      '⚡ ចាប់ផ្តើមទាញយក Update',
+      '⚡ ទាញយកក្នុងកម្មវិធី',
       async () => {
         isDownloadingUpdate = true;
         if (btnUpdaterAction) {

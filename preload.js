@@ -66,6 +66,7 @@ const apiBridge = {
   // System & Power Controls
   openFolder: (filePath) => ipcRenderer.invoke('system:open-path', filePath),
   openPath: (filePath) => ipcRenderer.invoke('system:open-path', filePath),
+  openExternal: (url) => ipcRenderer.invoke('system:open-external', url),
   showInFolder: (filePath) => ipcRenderer.invoke('system:show-in-folder', filePath),
   getDiskSpace: (folderPath) => ipcRenderer.invoke('system:get-disk-space', folderPath),
   shutdownPc: (seconds) => ipcRenderer.invoke('system:shutdown-pc', seconds),

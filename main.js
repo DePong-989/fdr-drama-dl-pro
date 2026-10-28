@@ -584,6 +584,14 @@ ipcMain.handle('system:open-path', (e, filePath) => {
   return false;
 });
 
+ipcMain.handle('system:open-external', async (e, url) => {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    await shell.openExternal(url);
+    return true;
+  }
+  return false;
+});
+
 ipcMain.handle('system:show-in-folder', (e, filePath) => {
   if (fs.existsSync(filePath)) {
     shell.showItemInFolder(filePath);
@@ -996,7 +1004,7 @@ ipcMain.handle('updater:download', async (event, opts = {}) => {
     const totalBytes = parseInt(resp.headers.get('content-length') || '0', 10);
     const totalFormatted = formatBytes(totalBytes);
 
-    const fileStream = fs.createWriteStream(tempFilePath);
+    const fileStream = fs.createWriteStream(tempFilePath, { highWaterMark: 1024 * 1024 });
     const reader = resp.body.getReader();
 
     let downloadedBytes = 0;
@@ -1008,15 +1016,21 @@ ipcMain.handle('updater:download', async (event, opts = {}) => {
       const { done, value } = await reader.read();
       if (done) break;
 
-      fileStream.write(value);
+      const canWrite = fileStream.write(value);
       downloadedBytes += value.length;
       bytesInWindow += value.length;
 
+      if (!canWrite) {
+        await new Promise((resolve) => fileStream.once('drain', resolve));
+      }
+
       const now = Date.now();
       const elapsed = now - lastProgressTime;
-      if (elapsed >= 250) {
+      if (elapsed >= 300) {
         const speedBps = (bytesInWindow / (elapsed / 1000));
-        currentSpeed = `${(speedBps / (1024 * 1024)).toFixed(1)} MB/s`;
+        currentSpeed = speedBps >= 1024 * 1024
+          ? `${(speedBps / (1024 * 1024)).toFixed(1)} MB/s`
+          : `${Math.round(speedBps / 1024)} KB/s`;
         bytesInWindow = 0;
         lastProgressTime = now;
 
