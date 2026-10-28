@@ -12,9 +12,12 @@ const releaseNoTerminalDir = path.join(rootDir, 'release_no_terminal', 'FDR Down
 fs.mkdirSync(clientDir, { recursive: true });
 fs.mkdirSync(adminDir, { recursive: true });
 
+const pkg = require('./package.json');
+const currentVer = pkg.version || '2.0.1';
+
 // Copy client executables
-const setupSrc = path.join(rootDir, 'dist_release', 'FDR Download Drama Pro Setup 2.0.0.exe');
-const portableSrc = path.join(rootDir, 'dist_release', 'FDR Download Drama Pro 2.0.0.exe');
+const setupSrc = path.join(rootDir, 'dist_release', `FDR Download Drama Pro Setup ${currentVer}.exe`);
+const portableSrc = path.join(rootDir, 'dist_release', `FDR Download Drama Pro ${currentVer}.exe`);
 const keygenSrc = path.join(rootDir, 'dist', 'FDR Pro Key Generator.exe');
 const unpackedSrc = path.join(rootDir, 'dist_release', 'win-unpacked');
 

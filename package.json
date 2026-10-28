@@ -1,6 +1,6 @@
 {
   "name": "fdr-drama-dl-pro",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "FDR Drama DL Pro - Luxury VIP Short Drama Downloader with Multi-CDN Aggregation",
   "main": "main.js",
   "scripts": {
