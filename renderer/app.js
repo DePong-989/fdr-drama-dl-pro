@@ -2673,10 +2673,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const updaterProgressLabel = document.getElementById('updater-progress-label');
   const updaterProgressPercent = document.getElementById('updater-progress-percent');
   const updaterProgressFill = document.getElementById('updater-progress-fill');
+  const updaterProgressSize = document.getElementById('updater-progress-size');
+  const updaterProgressSpeed = document.getElementById('updater-progress-speed');
   const btnUpdaterCancel = document.getElementById('btn-updater-cancel');
   const btnUpdaterAction = document.getElementById('btn-updater-action');
 
-  let currentAppVersion = '2.0.1';
+  let currentAppVersion = '2.0.2';
+  let isDownloadingUpdate = false;
+
   if (api && api.getAppVersion) {
     api.getAppVersion().then(v => {
       if (v) {
@@ -2700,12 +2704,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (btnUpdaterAction) {
       btnUpdaterAction.textContent = actionText;
+      btnUpdaterAction.disabled = false;
       btnUpdaterAction.onclick = actionFn;
     }
     modalUpdater.classList.add('active');
   }
 
   function closeUpdaterModal() {
+    if (isDownloadingUpdate && api && api.cancelUpdateDownload) {
+      api.cancelUpdateDownload();
+      isDownloadingUpdate = false;
+    }
     if (modalUpdater) modalUpdater.classList.remove('active');
   }
 
@@ -2713,22 +2722,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Trigger update flow when Update button is clicked
   async function triggerUpdateFlow(updateInfo) {
+    // Reset progress UI
+    if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'none';
+    if (updaterProgressPercent) updaterProgressPercent.textContent = '0%';
+    if (updaterProgressFill) updaterProgressFill.style.width = '0%';
+    if (updaterProgressSize) updaterProgressSize.textContent = '0 MB / ...';
+    if (updaterProgressSpeed) updaterProgressSpeed.textContent = '⚡ 0 MB/s';
+
     showUpdaterModal(
-      `🎉 រកឃើញកំណែថ្មី v${updateInfo.latestVersion}!`,
+      `🚀 មានកំណែអាប់ដេតថ្មី v${updateInfo.latestVersion}!`,
       `កំណែថ្មីនេះមានការកែលម្អមុខងារ និងដំណើរការរលូនជាងមុន។ តើអ្នកចង់ទាញយកឥឡូវនេះទេ?`,
-      '⚡ ទាញយក Update ឥឡូវនេះ',
+      '⚡ ចាប់ផ្តើមទាញយក Update',
       async () => {
+        isDownloadingUpdate = true;
         if (btnUpdaterAction) {
           btnUpdaterAction.disabled = true;
-          btnUpdaterAction.textContent = '⏳ កំពុងចាប់ផ្តើម...';
+          btnUpdaterAction.textContent = '⏳ កំពុងទាញយក...';
+          btnUpdaterAction.style.opacity = '0.7';
         }
         if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'block';
+        if (updaterProgressLabel) updaterProgressLabel.textContent = `⚡ កំពុងទាញយក v${updateInfo.latestVersion}...`;
+
         try {
-          await api.downloadUpdate();
+          await api.downloadUpdate({
+            downloadUrl: updateInfo.downloadUrl,
+            version: updateInfo.latestVersion
+          });
         } catch (err) {
+          isDownloadingUpdate = false;
           showToast(`❌ ${err.message}`);
           if (btnUpdaterAction) {
             btnUpdaterAction.disabled = false;
+            btnUpdaterAction.style.opacity = '1';
             btnUpdaterAction.textContent = '⚡ ព្យាយាមម្តងទៀត';
           }
         }
@@ -2755,16 +2780,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (headerUpdateBadgeText) headerUpdateBadgeText.textContent = `🚀 Update v${res.latestVersion}`;
           headerUpdateBadge.onclick = () => triggerUpdateFlow(res);
         }
-        if (settingUpdaterUptodate) {
-          settingUpdaterUptodate.innerHTML = `<span style="color:#fbbf24; font-weight:700;">🎉 មានកំណែថ្មី v${res.latestVersion}!</span>`;
-        }
       } else {
         // Up to date! HIDE UPDATE BUTTONS COMPLETELY!
         if (btnTriggerUpdate) btnTriggerUpdate.style.display = 'none';
         if (headerUpdateBadge) headerUpdateBadge.style.display = 'none';
-        if (settingUpdaterUptodate) {
-          settingUpdaterUptodate.innerHTML = `<span style="color:#34d399;">✅ កម្មវិធីជាកំណែចុងក្រោយបង្អស់ (v${res?.currentVersion || currentAppVersion})</span>`;
-        }
       }
     } catch (e) {
       console.warn('Silent update check failed:', e);
@@ -2779,23 +2798,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'block';
         if (updaterProgressPercent) updaterProgressPercent.textContent = `${data.percent}%`;
         if (updaterProgressFill) updaterProgressFill.style.width = `${data.percent}%`;
-        if (updaterProgressLabel) updaterProgressLabel.textContent = `⚡ កំពុងទាញយក (${data.percent}%)...`;
+        if (updaterProgressLabel) updaterProgressLabel.textContent = data.message || `⚡ កំពុងទាញយក (${data.percent}%)...`;
+        if (updaterProgressSize && data.transferredFormatted && data.totalFormatted) {
+          updaterProgressSize.textContent = `${data.transferredFormatted} / ${data.totalFormatted}`;
+        }
+        if (updaterProgressSpeed && data.speedFormatted) {
+          updaterProgressSpeed.textContent = `⚡ ${data.speedFormatted}`;
+        }
       } else if (data.status === 'downloaded') {
-        if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'none';
-        showUpdaterModal(
-          '🎉 ទាញយកចប់សព្វគ្រប់!',
-          `កំណែថ្មី v${data.version} ត្រូវបានទាញយករួចរាល់។ សូមចុច Restart ដើម្បីអនុវត្តការអាប់ដេតភ្លាមៗ!`,
-          '🔄 Restart & Update ឥឡូវនេះ',
-          () => {
-            api.installUpdate();
-          }
-        );
-        showToast(`🎉 បានទាញយកកំណែថ្មី v${data.version} រួចរាល់!`);
-      } else if (data.status === 'error') {
-        showToast(`❌ បរាជ័យក្នុងការ Update: ${data.message || data.error}`);
+        isDownloadingUpdate = false;
+        if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'block';
+        if (updaterProgressPercent) updaterProgressPercent.textContent = '100%';
+        if (updaterProgressFill) updaterProgressFill.style.width = '100%';
+        if (updaterProgressLabel) updaterProgressLabel.textContent = '✅ ទាញយកចប់សព្វគ្រប់ 100%!';
+        if (updaterProgressSpeed) updaterProgressSpeed.textContent = '✅ រួចរាល់';
+
+        if (updaterModalTitle) updaterModalTitle.textContent = '🎉 ទាញយកចប់សព្វគ្រប់!';
+        if (updaterModalDesc) updaterModalDesc.textContent = `កំណែថ្មី v${data.version || ''} ត្រូវបានទាញយករួចរាល់។ សូមចុច ដំឡើង និង Restart ដើម្បីអនុវត្តការអាប់ដេតភ្លាមៗ!`;
+
         if (btnUpdaterAction) {
           btnUpdaterAction.disabled = false;
+          btnUpdaterAction.style.opacity = '1';
+          btnUpdaterAction.textContent = '🔄 ដំឡើង និង Restart ឥឡូវនេះ';
+          btnUpdaterAction.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          btnUpdaterAction.onclick = () => {
+            btnUpdaterAction.disabled = true;
+            btnUpdaterAction.textContent = '⏳ កំពុងដំណើរការ...';
+            api.installUpdate();
+          };
+        }
+        showToast(`🎉 បានទាញយកកំណែថ្មី v${data.version || ''} រួចរាល់!`);
+      } else if (data.status === 'error') {
+        isDownloadingUpdate = false;
+        showToast(`❌ ${data.message || data.error}`);
+        if (updaterProgressLabel) updaterProgressLabel.textContent = '❌ ការទាញយកបានបរាជ័យ';
+        if (btnUpdaterAction) {
+          btnUpdaterAction.disabled = false;
+          btnUpdaterAction.style.opacity = '1';
           btnUpdaterAction.textContent = '⚡ ព្យាយាមម្តងទៀត';
+        }
+      } else if (data.status === 'cancelled') {
+        isDownloadingUpdate = false;
+        if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'none';
+        if (btnUpdaterAction) {
+          btnUpdaterAction.disabled = false;
+          btnUpdaterAction.style.opacity = '1';
+          btnUpdaterAction.textContent = '⚡ ចាប់ផ្តើមទាញយក Update';
         }
       }
     });

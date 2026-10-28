@@ -132,7 +132,8 @@ const apiBridge = {
   // Auto-Updater (GitHub Releases)
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
   checkUpdateSilently: () => ipcRenderer.invoke('updater:check-silent'),
-  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  downloadUpdate: (opts) => ipcRenderer.invoke('updater:download', opts),
+  cancelUpdateDownload: () => ipcRenderer.invoke('updater:cancel-download'),
   installUpdate: () => ipcRenderer.invoke('updater:install'),
   getAppVersion: () => ipcRenderer.invoke('updater:get-version'),
   onUpdateStatus: (callback) => {

@@ -921,16 +921,163 @@ ipcMain.handle('updater:check', async () => {
   }
 });
 
-ipcMain.handle('updater:download', async () => {
+let activeDownloadAbort = null;
+let downloadedInstallerFile = null;
+
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(1)} MB`;
+}
+
+// Native streaming download with real-time progress & speed
+ipcMain.handle('updater:download', async (event, opts = {}) => {
+  let targetUrl = opts?.downloadUrl;
+  let targetVer = opts?.version || 'latest';
+
+  // If no URL passed, fetch latest release asset URL from GitHub
+  if (!targetUrl) {
+    try {
+      const res = await fetch('https://api.github.com/repos/DePong-989/fdr-drama-dl-pro/releases/latest', {
+        headers: { 'User-Agent': 'FDR-Drama-DL-Pro-Updater' },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (res.ok) {
+        const d = await res.json();
+        targetVer = (d.tag_name || '').replace(/^v/i, '').trim();
+        const assets = Array.isArray(d.assets) ? d.assets : [];
+        const setupAsset = assets.find(a => a.name.endsWith('.exe') && /setup/i.test(a.name)) || assets.find(a => a.name.endsWith('.exe'));
+        if (setupAsset) targetUrl = setupAsset.browser_download_url;
+      }
+    } catch (e) {}
+  }
+
+  if (!targetUrl) {
+    const errMsg = 'រកមិនឃើញតំណភ្ជាប់ឯកសារ Update នៅលើ GitHub Releases ឡើយ!';
+    safeSend('updater:status', { status: 'error', error: errMsg, message: `❌ ${errMsg}` });
+    return { success: false, error: errMsg };
+  }
+
+  // Cancel any existing download
+  if (activeDownloadAbort) {
+    try { activeDownloadAbort.abort(); } catch (e) {}
+    activeDownloadAbort = null;
+  }
+
+  const abortCtrl = new AbortController();
+  activeDownloadAbort = abortCtrl;
+
+  const tempFilePath = path.join(app.getPath('temp'), `FDR-Drama-Setup-v${targetVer}.exe`);
+  downloadedInstallerFile = tempFilePath;
+
   try {
-    await autoUpdater.downloadUpdate();
-    return { success: true };
+    safeSend('updater:status', {
+      status: 'downloading',
+      percent: 0,
+      transferred: 0,
+      total: 0,
+      transferredFormatted: '0 MB',
+      totalFormatted: '...',
+      speedFormatted: '0 MB/s',
+      message: `⚡ កំពុងចាប់ផ្តើមទាញយក v${targetVer}...`
+    });
+
+    const resp = await fetch(targetUrl, {
+      signal: abortCtrl.signal,
+      headers: { 'User-Agent': 'FDR-Drama-DL-Pro-Downloader' }
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP Error ${resp.status}: ${resp.statusText}`);
+    }
+
+    const totalBytes = parseInt(resp.headers.get('content-length') || '0', 10);
+    const totalFormatted = formatBytes(totalBytes);
+
+    const fileStream = fs.createWriteStream(tempFilePath);
+    const reader = resp.body.getReader();
+
+    let downloadedBytes = 0;
+    let lastProgressTime = Date.now();
+    let bytesInWindow = 0;
+    let currentSpeed = '0 MB/s';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      fileStream.write(value);
+      downloadedBytes += value.length;
+      bytesInWindow += value.length;
+
+      const now = Date.now();
+      const elapsed = now - lastProgressTime;
+      if (elapsed >= 250) {
+        const speedBps = (bytesInWindow / (elapsed / 1000));
+        currentSpeed = `${(speedBps / (1024 * 1024)).toFixed(1)} MB/s`;
+        bytesInWindow = 0;
+        lastProgressTime = now;
+
+        const percent = totalBytes > 0 ? Math.min(99, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
+        safeSend('updater:status', {
+          status: 'downloading',
+          percent,
+          transferred: downloadedBytes,
+          total: totalBytes,
+          transferredFormatted: formatBytes(downloadedBytes),
+          totalFormatted,
+          speedFormatted: currentSpeed,
+          message: `⚡ កំពុងទាញយក... ${percent}% (${formatBytes(downloadedBytes)} / ${totalFormatted})`
+        });
+      }
+    }
+
+    fileStream.end();
+    await new Promise((resolve) => fileStream.on('finish', resolve));
+
+    activeDownloadAbort = null;
+
+    safeSend('updater:status', {
+      status: 'downloaded',
+      version: targetVer,
+      installerPath: tempFilePath,
+      totalFormatted,
+      message: `🎉 បានទាញយកកំណែថ្មី v${targetVer} រួចរាល់!`
+    });
+
+    return { success: true, installerPath: tempFilePath };
   } catch (err) {
+    if (abortCtrl.signal.aborted) {
+      safeSend('updater:status', { status: 'cancelled', message: 'ការទាញយកត្រូវបានបោះបង់' });
+      return { success: false, cancelled: true };
+    }
+    safeSend('updater:status', { status: 'error', error: err.message, message: `❌ បរាជ័យក្នុងការទាញយក: ${err.message}` });
     return { success: false, error: err.message };
   }
 });
 
+ipcMain.handle('updater:cancel-download', () => {
+  if (activeDownloadAbort) {
+    activeDownloadAbort.abort();
+    activeDownloadAbort = null;
+  }
+  return { success: true };
+});
+
 ipcMain.handle('updater:install', () => {
+  if (downloadedInstallerFile && fs.existsSync(downloadedInstallerFile)) {
+    try {
+      const { spawn } = require('child_process');
+      spawn(downloadedInstallerFile, [], { detached: true, stdio: 'ignore' }).unref();
+      setTimeout(() => {
+        app.quit();
+      }, 400);
+      return { success: true };
+    } catch (e) {
+      console.error('Failed to spawn installer:', e);
+    }
+  }
+
   try {
     autoUpdater.quitAndInstall(false, true);
     return { success: true };
@@ -970,12 +1117,20 @@ ipcMain.handle('updater:check-silent', async () => {
     const remoteVer = (data.tag_name || '').replace(/^v/i, '').trim();
 
     const isNewer = isNewerVersion(remoteVer, curVer);
+
+    const assets = Array.isArray(data.assets) ? data.assets : [];
+    const setupAsset = assets.find(a => a.name.endsWith('.exe') && /setup/i.test(a.name)) || assets.find(a => a.name.endsWith('.exe'));
+    const downloadUrl = setupAsset ? setupAsset.browser_download_url : null;
+    const downloadSize = setupAsset ? setupAsset.size : null;
+
     return {
       hasUpdate: isNewer,
       currentVersion: curVer,
       latestVersion: remoteVer,
       releaseNotes: data.body || '',
-      releaseUrl: data.html_url
+      releaseUrl: data.html_url,
+      downloadUrl,
+      downloadSize
     };
   } catch (err) {
     return { hasUpdate: false, error: err.message, currentVersion: curVer };
