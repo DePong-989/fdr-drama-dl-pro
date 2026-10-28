@@ -19,3 +19,4 @@ short-drama-downloader-main/
 temp/
 .DS_Store
 Thumbs.db
+publish_config.json
