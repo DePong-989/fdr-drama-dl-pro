@@ -1,0 +1,24 @@
+{
+    "venvPath": ".",
+    "venv": ".venv",
+    "include": [
+        ".",
+        "short-drama-downloader-main/short-drama-downloader-main/源码_开源版"
+    ],
+    "exclude": [
+        ".venv",
+        "build_final",
+        "build_no_terminal",
+        "build_release",
+        "release_no_terminal"
+    ],
+    "extraPaths": [
+        ".venv/Lib/site-packages",
+        "short-drama-downloader-main/short-drama-downloader-main/源码_开源版"
+    ],
+    "reportMissingImports": "none",
+    "reportAttributeAccessIssue": "none",
+    "reportGeneralTypeIssues": "none",
+    "reportOptionalMemberAccess": "none",
+    "typeCheckingMode": "off"
+}

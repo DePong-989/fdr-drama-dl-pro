@@ -1,0 +1,22 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/.venv/Lib/site-packages",
+        "${workspaceFolder}/short-drama-downloader-main/short-drama-downloader-main/源码_开源版"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/.venv/Lib/site-packages",
+        "${workspaceFolder}/short-drama-downloader-main/short-drama-downloader-main/源码_开源版"
+    ],
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none",
+        "reportAttributeAccessIssue": "none",
+        "reportGeneralTypeIssues": "none"
+    },
+    "pyrefly.interpreter": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "pyrefly.analysis.extraPaths": [
+        "${workspaceFolder}/.venv/Lib/site-packages",
+        "${workspaceFolder}/short-drama-downloader-main/short-drama-downloader-main/源码_开源版"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "merchantName": "Admin-FDR",
+  "bakongAccountId": "abaakhppxxx@abaa",
+  "accountNumber": "600 462 336",
+  "usdAccountNumber": "093 890 098",
+  "bankName": "ABA Bank",
+  "accountName": "SOCHEKA HOUN",
+  "abaP2pToken": "2698B1575AA9",
+  "priceUsd": 25.0,
+  "currency": "USD",
+  "merchantCity": "Phnom Penh",
+  "telegramAdmin": "https://t.me/socheka_admin",
+  "bakongToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiNWJhMDViZDUzMDgzNGE1ZSJ9LCJpYXQiOjE3OTMwNTM4ODMsImV4cCI6MTgwMDgyOTg4M30.fjP_EUThSyp6wecB4NPxILxfJxykUNE1mm6DKc6Dwqg",
+  "plans": {
+    "1MONTH": { "label": "1 ខែ (1 Month)", "price": 2.99, "days": 30 },
+    "3MONTHS": { "label": "3 ខែ (3 Months)", "price": 4.99, "days": 90 },
+    "1YEAR": { "label": "1 ឆ្នាំ (1 Year)", "price": 9.99, "days": 365 },
+    "LIFETIME": { "label": "ពេញមួយជីវិត (Lifetime)", "price": 25.0, "days": 99999 }
+  }
+}

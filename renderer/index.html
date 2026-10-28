@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FDR DRAMA REEL PRO - Turbo Short Drama Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Kantumruy+Pro:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="hls.min.js"></script>
+</head>
+<body>
+  <div class="cinema-app-wrapper">
+    <!-- ================= CINEMA INTRO POWER SYSTEM ================= -->
+    <div class="cinema-intro-overlay" id="cinema-intro-overlay">
+      <div class="intro-ambient-glow intro-glow-gold"></div>
+      <div class="intro-ambient-glow intro-glow-blue"></div>
+      <div class="intro-grid-stars"></div>
+
+      <!-- Intro Top Status Header -->
+      <div class="intro-top-bar">
+        <div class="intro-sys-status">
+          <span class="status-pulse-dot"></span>
+          <span>FDR DRAMA DL PRO CORE • SYSTEM ONLINE</span>
+        </div>
+      </div>
+
+      <!-- Center Hologram Cinema Power Hub -->
+      <div class="intro-power-card">
+        <!-- Glowing Holographic Emblem -->
+        <div class="intro-hologram-wrap">
+          <div class="hologram-orbit-ring orbit-1"></div>
+          <div class="hologram-orbit-ring orbit-2"></div>
+          <div class="hologram-orbit-ring orbit-3"></div>
+          <div class="intro-emblem-disc">
+            <img src="logo_preview.png" alt="FDR Drama DL Pro" class="intro-logo-img" onerror="this.style.display='none'">
+            <div class="intro-crown-fallback">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" fill="url(#intro-crown-grad)" stroke="#ffd700" stroke-width="1.2" stroke-linejoin="round"/>
+                <path d="M5 19H19" stroke="#ffd700" stroke-width="2" stroke-linecap="round"/>
+                <defs>
+                  <linearGradient id="intro-crown-grad" x1="3" y1="4" x2="21" y2="19" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#fff0aa"/>
+                    <stop offset="0.5" stop-color="#d4af37"/>
+                    <stop offset="1" stop-color="#8a5a14"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typography -->
+        <div class="intro-brand-meta">
+          <div class="intro-badge-vip">👑 OFFICIAL VIP SHORT DRAMA ENGINE</div>
+          <h1 class="intro-title-primary">FDR DRAMA DL PRO</h1>
+          <div class="intro-tagline">HONGGUO VIP • 100,000+ រឿងភាគខ្លី</div>
+          <p class="intro-description">
+            ប្រព័ន្ធទាញយកភាពយន្តភាគខ្លីល្បឿនលឿន Turbo Parallel • រក្សាគុណភាពច្បាស់ 1080P កម្រិតខ្ពស់ • មានគ្រប់ភាគទាំងអស់ ១០០%
+          </p>
+        </div>
+
+        <!-- Power Controls (POWER ON & POWER OFF) -->
+        <div class="intro-actions-row">
+          <!-- Button Power ON -->
+          <button class="btn-power-main btn-power-on" id="btn-power-on" title="ចុចដើម្បីបើកដំណើរការកម្មវិធី">
+            <div class="power-glow-aura"></div>
+            <div class="power-btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                <line x1="12" y1="2" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div class="power-btn-labels">
+              <span class="power-btn-en">POWER ON</span>
+              <span class="power-btn-km">បើកដំណើរការកម្មវិធី</span>
+            </div>
+          </button>
+
+          <!-- Button Power OFF (Red) -->
+          <button class="btn-power-main btn-power-off" id="btn-power-off" title="ចុចដើម្បីបិទកម្មវិធី">
+            <div class="power-glow-aura aura-red"></div>
+            <div class="power-btn-icon icon-red">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                <line x1="12" y1="2" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div class="power-btn-labels">
+              <span class="power-btn-en text-red">POWER OFF</span>
+              <span class="power-btn-km">បិទកម្មវិធី (Exit)</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Intro Status Bar -->
+        <div class="intro-footer-bar">
+          <span class="intro-status-code">STATUS: READY TO STREAM & DOWNLOAD</span>
+          <span class="intro-dot-sep">•</span>
+          <span class="intro-copyright">DEVELOPED BY FDR STUDIO</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TOP FLOATING CINEMA NAV ================= -->
+    <header class="cinema-header-bar">
+      <!-- Brand Logo -->
+      <div class="cinema-brand-box">
+        <div class="brand-crown-glow">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" fill="url(#crown-gold)" stroke="#ffd700" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M5 19H19" stroke="#ffd700" stroke-width="2" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="crown-gold" x1="3" y1="4" x2="21" y2="19" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#fff0aa"/>
+                <stop offset="0.5" stop-color="#d4af37"/>
+                <stop offset="1" stop-color="#8a5a14"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <span class="brand-main">FDR DRAMA</span>
+          <span class="brand-badge-pro">PRO VIP</span>
+        </div>
+      </div>
+
+      <!-- Center Floating Navigation Dock -->
+      <nav class="cinema-nav-dock">
+        <button class="dock-tab active" data-view="catalog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="3"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          <span data-i18n="navCatalog">រឿងភាគ (Dramas)</span>
+        </button>
+        <button class="dock-tab" data-view="favorites" id="tab-nav-favorites">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span>ពេញចិត្ត (Favorites)</span>
+          <span class="dock-counter-pill" id="badge-fav-count" style="display:none">0</span>
+        </button>
+        <button class="dock-tab" data-view="downloads">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="navDownloads">ទាញយក (Downloads)</span>
+          <span class="dock-counter-pill" id="badge-dl-count">0</span>
+        </button>
+        <button class="dock-tab" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span data-i18n="navSettings">ការកំណត់</span>
+        </button>
+      </nav>
+
+      <!-- Right Control Suite -->
+      <div class="cinema-header-right">
+        <!-- Search Box -->
+        <div class="cinema-search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="search-ico"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="input-cinema-search" placeholder="ស្វែងរក ឬ Paste Link...">
+          <button id="btn-cinema-search" class="btn-cinema-search-go">ស្វែងរក</button>
+        </div>
+
+        <!-- Quick Destination Pill -->
+        <button class="quick-dest-pill" id="btn-quick-dest" title="ចុចដើម្បីផ្លាស់ប្តូរថតទាញយក">
+          <span class="folder-ico">📁</span>
+          <span class="folder-txt" id="top-dest-display">D:\FDR Downlaod</span>
+        </button>
+
+        <!-- Lang Switcher -->
+        <div class="lang-switch-dock">
+          <button class="lang-dot active" data-lang="km">ខ្មែរ</button>
+          <button class="lang-dot" data-lang="en">EN</button>
+          <button class="lang-dot" data-lang="zh">中文</button>
+        </div>
+
+        <!-- VIP Key Activation Trigger Badge -->
+        <button class="btn-vip-badge" id="btn-vip-badge" title="ចុចដើម្បីពិនិត្យ ឬបញ្ចូល Key Activation">
+          <span class="vip-badge-icon" id="vip-badge-icon">👑</span>
+          <span class="vip-badge-text" id="vip-badge-text">VIP Activation</span>
+        </button>
+      </div>
+
+      <!-- Futuristic VIP Window Controls (Pinned to top right, never clipped) -->
+      <div class="cinema-win-controls">
+        <button class="win-btn win-btn-min" id="btn-minimize" title="បង្រួម (Minimize)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="win-btn win-btn-max" id="btn-maximize" title="ពង្រីក (Maximize)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+        </button>
+        <button class="win-btn win-btn-close" id="btn-close" title="បិទកម្មវិធី (Close Application)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ================= MAIN CONTENT VIEWPORT ================= -->
+    <main class="cinema-viewport">
+      <!-- VIEW 1: HONGGUO CATALOG & SHOWCASE -->
+      <section class="cinema-view active" id="view-catalog">
+        <!-- Modern Easy-to-Use VIP Category Hub (No Horizontal Scrollbar) -->
+        <div class="cinema-category-panel">
+          <!-- Row 1: Content Formats & Top Lists -->
+          <div class="cat-group-row">
+            <div class="cat-group-header">
+              <span class="cat-group-badge">🎯 ទម្រង់រឿង</span>
+            </div>
+            <div class="cat-pills-wrap" id="format-pills-wrap">
+              <button class="cat-pill active" data-format="all">🌟 ទាំងអស់ (All VIP)</button>
+              <button class="cat-pill" data-format="new-releases">🆕 ទើបចេញថ្មី (៣ថ្ងៃចុងក្រោយ)</button>
+              <button class="cat-pill" data-format="real-drama">🎭 មនុស្សសម្តែងសុទ្ធ (真人剧)</button>
+              <button class="cat-pill" data-format="comic">🤖 AI & គំនូរជីវចលសុទ្ធ (漫剧/AI)</button>
+              <button class="cat-pill" data-format="landscape">🖥️ 16:9 ទទឹង (横屏)</button>
+              <button class="cat-pill" data-format="vertical">📱 9:16 បញ្ឈរ (竖屏)</button>
+              <button class="cat-pill" data-format="trending">🔥 កំពុងពេញនិយម (Trending)</button>
+            </div>
+          </div>
+
+          <!-- Row 2: Popular Story Genres -->
+          <div class="cat-group-row">
+            <div class="cat-group-header">
+              <span class="cat-group-badge">🏷️ ប្រភេទសាច់រឿង</span>
+            </div>
+            <div class="cat-pills-wrap" id="genre-pills-wrap">
+              <button class="cat-pill active" data-genre="all">🌟 គ្រប់ប្រភេទ (All Genres)</button>
+              <button class="cat-pill" data-genre="magic">🔮 សិល្ប៍ & ទេវកថា (玄幻/仙侠)</button>
+              <button class="cat-pill" data-genre="pure-ancient">🏮 បុរាណសុទ្ធ (纯古装/宫廷)</button>
+              <button class="cat-pill" data-genre="travel">⏳ បុរាណលាយសម័យ (穿越/古今)</button>
+              <button class="cat-pill" data-genre="pure-comedy">😂 កំប្លែងសុទ្ធ (纯喜剧/搞笑)</button>
+              <button class="cat-pill" data-genre="战神">⚔️ ស្ដេចសឹក (战神)</button>
+              <button class="cat-pill" data-genre="逆袭">🔥 វាយបក (逆袭)</button>
+              <button class="cat-pill" data-genre="总裁">💼 មហាសេដ្ឋី (总裁)</button>
+              <button class="cat-pill" data-genre="甜宠">💖 ស្នេហាផ្អែមល្ហែម (甜宠)</button>
+              <button class="cat-pill" data-genre="重生">⏳ ចាប់ជាតិថ្មី (重生)</button>
+              <button class="cat-pill" data-genre="神豪">💰 សេដ្ឋីវាល់លាន (神豪)</button>
+              <button class="cat-pill" data-genre="悬疑">🕵️ អាថ៌កំបាំង (悬疑)</button>
+              <button class="cat-pill" data-genre="赘婿">👑 កូនប្រសារ (赘婿)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hongguo Cards Grid Header -->
+        <div class="cinema-grid-header">
+          <div class="grid-title-row">
+            <span class="grid-title-main" id="catalog-heading-title">🎬 Hongguo Drama Reel</span>
+            <span class="grid-count-badge" id="catalog-total-counter">14,116+ រឿង</span>
+          </div>
+          <div class="grid-controls-right">
+            <div class="catalog-sort-wrap" title="រៀបតាមលំដាប់លំដោយ">
+              <span class="catalog-sort-label">📊 រៀបតាម:</span>
+              <select id="select-catalog-sort" class="cinema-sort-select">
+                <option value="popular">🌟 ពេញនិយមបំផុត</option>
+                <option value="newest">⏱️ ចេញថ្មីបំផុត</option>
+                <option value="episodes">🔢 ភាគច្រើនបំផុត</option>
+              </select>
+            </div>
+            <button id="btn-sync-catalog" class="btn-sync-catalog" title="ពិនិត្យ និងទាញយករឿងថ្មីៗចុងក្រោយបំផុតចូលទៅក្នុង Catalog">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="sync-icon"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              <span>🔄 អាប់ដេតរឿងថ្មីៗ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pure Hongguo Poster Grid -->
+        <div class="cinema-posters-grid" id="hongguo-grid">
+          <!-- Dynamic Hongguo Cards -->
+        </div>
+
+        <!-- Infinite Scroll Bottom Status & End Indicator -->
+        <div class="cinema-infinite-status" id="catalog-infinite-status">
+          <div class="infinite-loading-box" id="catalog-infinite-loading" style="display: none;">
+            <div class="infinite-spinner"></div>
+            <span>កំពុងទាញយករឿងបន្តបន្ទាប់... (Scroll to load more)</span>
+          </div>
+          <div class="infinite-end-box" id="catalog-infinite-end" style="display: none;">
+            <span class="end-icon">✨</span>
+            <span id="catalog-end-text">បានបង្ហាញរឿងទាំងអស់ក្នុងជម្រើសនេះរួចរាល់</span>
+          </div>
+          <button class="btn-scroll-to-top" id="btn-catalog-scroll-top" style="display: none;" title="ត្រឡប់ទៅលើវិញ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+            <span>ឡើងលើវិញ (Top)</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- VIEW: FAVORITES / BOOKMARKS COLLECTION -->
+      <section class="cinema-view" id="view-favorites">
+        <div class="cinema-grid-header">
+          <div class="grid-title-row">
+            <span class="grid-title-main">⭐ បញ្ជីរឿងដែលអ្នកពេញចិត្ត (Favorites Collection)</span>
+            <span class="grid-count-badge" id="favorites-total-counter">0 រឿង</span>
+          </div>
+        </div>
+        <div class="cinema-posters-grid" id="favorites-grid">
+          <!-- Dynamically populated favorite drama cards -->
+        </div>
+      </section>
+
+      <!-- VIEW 2: DOWNLOADS HUB -->
+      <section class="cinema-view" id="view-downloads">
+        <!-- Download Destination Header Banner -->
+        <div class="cinema-dest-banner">
+          <div class="dest-banner-left">
+            <div class="dest-label-row">
+              <span class="dest-label">📁 ទីតាំងរក្សាទុកការទាញយក (Download Destination Folder):</span>
+              <span class="dest-disk-badge" id="dest-disk-badge" title="ទំហំថាសរឹងទំនេរ">💾 កំពុងពិនិត្យ Disk...</span>
+            </div>
+            <div class="dest-path-bold" id="dl-dest-full-path">D:\FDR Downlaod</div>
+          </div>
+          <button class="btn-change-folder" id="btn-change-dest-folder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>ជ្រើសរើសថត & Save</span>
+          </button>
+        </div>
+
+        <!-- Downloads Action Toolbar -->
+        <div class="cinema-dl-toolbar">
+          <div class="dl-tab-toggles">
+            <button class="tab-toggle-btn active" data-tab="downloading">
+              <span>បញ្ជីទាញយក / កំពុងទាញ</span>
+              <span class="tab-count" id="count-tab-downloading">0</span>
+            </button>
+            <button class="tab-toggle-btn" data-tab="completed">
+              <span>បានបញ្ចប់</span>
+              <span class="tab-count" id="count-tab-completed">0</span>
+            </button>
+          </div>
+
+          <div class="dl-action-btns">
+            <button class="btn-dl-tool btn-gold-solid" id="btn-start-all-queue" title="ទាញយកគ្រប់រឿងទាំងអស់ក្នុងបញ្ជីរង់ចាំ">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>⚡ ទាញយកទាំងអស់ (Start All)</span>
+            </button>
+            <button class="btn-dl-tool" id="btn-pause-all" title="ផ្អាកការទាញយកទាំងអស់">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              <span>⏸️ ផ្អាកទាំងអស់</span>
+            </button>
+            <button class="btn-dl-tool btn-night-mode" id="btn-auto-shutdown" title="បិទកុំព្យូទ័រស្វ័យប្រវត្តនៅពេលទាញយកចប់គ្រប់រឿងទាំងអស់">
+              <span class="moon-icon">🌙</span>
+              <span>បិទ PC ពេលចប់: <strong id="auto-shutdown-state">បិទ</strong></span>
+            </button>
+            <button class="btn-dl-tool" id="btn-export-download-list" title="Export បញ្ជីរឿងដែលបានទាញយកជាឯកសារ Text">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>📄 Export .txt</span>
+            </button>
+            <button class="btn-dl-tool" id="btn-clear-completed" title="សម្អាតរឿងដែលបានទាញយកចប់">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span>សម្អាតដែលចប់</span>
+            </button>
+            <button class="btn-dl-tool btn-clean-disk" id="btn-clean-disk-downloads" title="សម្អាត Cache និង Temp Files ដើម្បីកុំឱ្យហើមទំហំ Hard Disk">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+              <span>🧹 សម្អាត Cache</span>
+            </button>
+            <button class="btn-dl-tool btn-gold-frame" id="btn-open-folder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span>📁 បើកថត</span>
+            </button>
+            <div class="quick-concurrency-wrap" title="ជ្រើសរើសចំនួនភាគទាញយកដំណាលគ្នា (Multi-Thread Concurrency)">
+              <span class="quick-concurrency-label">⚡ ដំណាលគ្នា:</span>
+              <select id="quick-concurrent-select" class="quick-concurrent-select">
+                <option value="3">3 ភាគ</option>
+                <option value="5" selected>5 ភាគ</option>
+                <option value="8">8 ភាគ</option>
+                <option value="10">10 ភាគ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task Stream -->
+        <div class="cinema-tasks-stream" id="tasks-stream-container">
+          <!-- Tasks dynamically rendered -->
+        </div>
+      </section>
+
+      <!-- VIEW 3: SETTINGS -->
+      <section class="cinema-view" id="view-settings">
+        <div class="cinema-settings-card">
+          <h2 class="settings-title">ការកំណត់ប្រព័ន្ធ (System Configuration)</h2>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-title">ថតផ្ទុកការទាញយក (Download Destination Folder):</div>
+              <div class="setting-desc">វីដេអូ និង Thumbnail cover.jpg ទាំងអស់នឹងត្រូវ Save ទៅកាន់ទីតាំងនេះ</div>
+            </div>
+            <div class="setting-ctrl">
+              <input type="text" id="setting-path-input" class="path-readonly-box" readonly>
+              <button class="btn-browse-folder" id="btn-browse-setting">ជ្រើសរើសថត...</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-title">ចំនួនទាញយកដំណាលគ្នា (Concurrent Downloads):</div>
+              <div class="setting-desc">កំណត់ចំនួនភាគទាញយកក្នុងពេលតែមួយ (Turbo Parallel 1 ដល់ 10)</div>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="setting-concurrent-slider" min="1" max="10" value="5" class="gold-slider">
+              <span class="slider-badge" id="setting-concurrent-label">5 Tasks</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-title">ភាសាប្រើប្រាស់ (Application Language):</div>
+              <div class="setting-desc">ជ្រើសរើសភាសាសម្រាប់ផ្ទាំងបញ្ជាកម្មវិធី</div>
+            </div>
+            <div class="setting-ctrl">
+              <select id="setting-lang-dropdown" class="gold-select">
+                <option value="km">ភាសាខ្មែរ (Khmer)</option>
+                <option value="en">English (US)</option>
+                <option value="zh">中文 (Chinese)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-title">🧹 សម្អាតទំហំ Disk (Clear Cache & Temp):</div>
+              <div class="setting-desc">លុបឯកសារបណ្ដោះអាសន្ន .part, preview thumbnails, និង session cache ដើម្បីការពារកុំឱ្យហើម Hard Disk</div>
+            </div>
+            <div class="setting-ctrl">
+              <button class="btn-tool-clean-disk" id="btn-clean-disk-settings" title="សម្អាត Cache និងឯកសារបណ្ដោះអាសន្ន">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+                <span>សម្អាត Cache ឥឡូវនេះ (Clean Disk)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-row setting-license-row">
+            <div>
+              <div class="setting-title">🔑 អាជ្ញាប័ណ្ណ & Key Activation (Device Bound):</div>
+              <div class="setting-desc">ស្ថានភាពអាជ្ញាប័ណ្ណ និងលេខសម្គាល់ Device ID សម្រាប់ផ្ញើទៅកាន់ Admin</div>
+            </div>
+            <div class="setting-ctrl license-ctrl-box">
+              <div class="setting-device-chip">
+                <span class="device-chip-label">ID:</span>
+                <span class="device-chip-val" id="setting-device-id-val">FDR-XXXX-XXXX-XXXX</span>
+                <button class="btn-copy-chip" id="btn-copy-device-id-settings" title="ចម្លង Device ID">📋 Copy</button>
+              </div>
+              <div class="setting-license-badge" id="setting-license-badge">
+                <span id="setting-plan-text">Free Trial</span>
+              </div>
+              <button class="btn-tool-gold" id="btn-open-license-settings">👑 គ្រប់គ្រង Key</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-title">🔄 ពិនិត្យ Update កម្មវិធី (Online Auto-Update):</div>
+              <div class="setting-desc">ពិនិត្យមើលកំណែថ្មី និងទាញយកស្វ័យប្រវត្តពី GitHub Releases (Version: <strong id="setting-app-version" style="color:var(--gold-400);">v2.0.0</strong>)</div>
+            </div>
+            <div class="setting-ctrl" style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+              <button type="button" class="btn-tool-gold" id="btn-check-updater-settings">
+                <span>🔄 ពិនិត្យកំណែថ្មី (Check Update)</span>
+              </button>
+              <div id="setting-updater-status" style="font-size:11px; color:var(--text-muted); display:none;"></div>
+            </div>
+          </div>
+
+          <div class="settings-footer">
+            <button class="btn-save-settings" id="btn-confirm-save-settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>រក្សាទុកការកំណត់ (Save Settings)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= DRAMA DETAIL MODAL (ALL 86 EPISODES!) ================= -->
+    <div class="cinema-modal-overlay" id="modal-detail">
+      <div class="cinema-modal-dialog">
+        <button class="btn-close-modal" id="btn-close-detail" title="Close">✕</button>
+
+        <div class="modal-body-scroll">
+          <!-- Top Info Row -->
+          <div class="modal-info-row">
+            <div class="modal-poster-box" id="detail-poster-box">
+              <img id="detail-poster-img" src="" alt="Drama Poster" class="modal-poster">
+            </div>
+
+            <div class="modal-text-box">
+              <h1 class="modal-drama-title-zh" id="detail-title-zh">Drama Title</h1>
+              <div class="modal-meta-pills" id="detail-tags-row">
+                <!-- Badges -->
+              </div>
+
+              <!-- Output folder bar inside the modal -->
+              <div class="modal-dest-bar">
+                <span class="dest-icon">📁</span>
+                <span class="dest-label-sm">Save Folder:</span>
+                <span class="dest-path-sm" id="modal-dest-path-text">D:\FDR Downlaod</span>
+                <button class="btn-modal-change-dir" id="btn-modal-change-dir">ផ្លាស់ប្តូរថត</button>
+              </div>
+
+              <div class="modal-synopsis-box">
+                <p id="detail-desc-text">Loading...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi-Season Album Bar (Apple TV / Netflix Style) -->
+          <div class="modal-album-bar" id="modal-album-bar" style="display: none;">
+            <div class="album-bar-title">
+              <span class="album-icon">👑</span>
+              <span class="album-label">រដូវកាលភាពយន្តក្នុង Album នេះ (Album Seasons):</span>
+              <span class="album-count-tag" id="album-count-tag">២ រដូវកាល</span>
+            </div>
+            <div class="album-season-pills" id="album-season-pills">
+              <!-- Dynamically populated season tabs (e.g. [🎬 រដូវកាលទី ១] [🎬 រដូវកាលទី ២]) -->
+            </div>
+          </div>
+
+          <!-- Episode Selection & Action Toolbar -->
+          <div class="modal-episodes-toolbar">
+            <div class="toolbar-left">
+              <span class="toolbar-title">បញ្ជីភាគភាពយន្ត (Episodes)</span>
+              <span class="toolbar-total" id="detail-total-ep-badge">• 86 ភាគ (គ្រប់ភាគទាំងអស់)</span>
+            </div>
+
+            <div class="toolbar-right">
+              <button class="btn-tool-gold-solid btn-all-seasons" id="btn-download-all-seasons" style="display: none;" title="បន្ថែមគ្រប់ភាគនៃគ្រប់រដូវកាលទាំងអស់ទៅបញ្ជី Download">
+                👑 បន្ថែមគ្រប់រដូវកាល
+              </button>
+              <button class="btn-tool-gold-solid" id="btn-download-selected-eps" title="ដាក់ភាគដែលបានជ្រើសទៅក្នុងបញ្ជីរង់ចាំ (Waiting) ដោយមិនទាន់ Auto Download">
+                📥 ដាក់ចូលបញ្ជី (<span id="selected-count-num">0</span>)
+              </button>
+              <button class="btn-tool-gold-solid" id="btn-download-all-eps" title="ដាក់គ្រប់ភាគទាំងអស់ទៅក្នុងបញ្ជីរង់ចាំ (Waiting) ដោយមិនទាន់ Auto Download">
+                ⚡ ដាក់ចូលបញ្ជីទាំងអស់
+              </button>
+              <button class="btn-tool-pill btn-fav-star" id="btn-modal-fav" title="បញ្ចូលក្នុងបញ្ជីរឿងពេញចិត្ត">
+                ⭐ ចូលចិត្ត
+              </button>
+              <button class="btn-tool-pill" id="btn-modal-copy-links" title="ចម្លងតំណភ្ជាប់ Stream គ្រប់ភាគទាំងអស់">
+                📋 Copy Links
+              </button>
+              <button class="btn-tool-thumb" id="btn-download-thumb-only" title="ទាញយក Cover.jpg ទៅក្នុងថត">
+                🖼️ ទាញយក Poster
+              </button>
+            </div>
+          </div>
+
+          <!-- Selection Controls & Range Filters Sub-bar -->
+          <div class="modal-selection-subbar">
+            <!-- Batch Range Filters -->
+            <div class="episode-range-filters" id="range-filters-bar">
+              <!-- Filter buttons like [1-30] [31-60] [All] -->
+            </div>
+
+            <!-- Quick Selection Actions (Select All, Deselect All, Invert) -->
+            <div class="episode-quick-select-tools">
+              <button class="btn-select-pill" id="btn-select-all-eps" title="ជ្រើសរើសគ្រប់ភាគទាំងអស់">
+                <span class="select-icon">☑️</span>
+                <span data-i18n="selectAll">ជ្រើសរើសទាំងអស់ (Select All)</span>
+              </button>
+              <button class="btn-select-pill" id="btn-deselect-all-eps" title="ដោះការជ្រើសរើសគ្រប់ភាគទាំងអស់">
+                <span class="select-icon">◻️</span>
+                <span data-i18n="deselectAll">ដោះការជ្រើសរើស (Deselect)</span>
+              </button>
+              <button class="btn-select-pill" id="btn-invert-select-eps" title="ជ្រើសរើសភាគបញ្ច្រាស">
+                <span class="select-icon">🔄</span>
+                <span>បញ្ច្រាស (Invert)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- The Complete Grid of Episode Chips -->
+          <div class="modal-chips-grid" id="detail-episodes-grid">
+            <!-- 86 chips dynamically rendered -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Player Modal with Playlist Navigation -->
+    <div class="cinema-modal-overlay" id="modal-player">
+      <div class="player-dialog-box">
+        <div class="player-header-bar">
+          <span class="player-title" id="player-title-display">Player</span>
+          <div class="player-controls-top">
+            <div class="player-ep-nav-bar" id="player-ep-nav-bar" style="display:none;">
+              <button class="btn-player-nav" id="btn-player-prev-ep" title="ភាគមុន (Alt + ←)">⏮️ ភាគមុន</button>
+              <span class="player-ep-indicator" id="player-ep-indicator">ភាគ 01</span>
+              <button class="btn-player-nav" id="btn-player-next-ep" title="ភាគបន្ទាប់ (Alt + →)">ភាគបន្ទាប់ ⏭️</button>
+            </div>
+            <div class="player-speed-pills">
+              <span class="speed-label">ល្បឿន:</span>
+              <button class="btn-player-speed active" data-speed="1">1x</button>
+              <button class="btn-player-speed" data-speed="1.25">1.25x</button>
+              <button class="btn-player-speed" data-speed="1.5">1.5x</button>
+              <button class="btn-player-speed" data-speed="2">2x</button>
+            </div>
+            <button class="btn-close-modal" id="btn-close-player" title="បិទ Player (Esc)">✕</button>
+          </div>
+        </div>
+        <div class="player-canvas">
+          <video id="cinema-video" controls autoplay playsinline></video>
+        </div>
+        <div class="player-hotkey-hint">
+          <span>⌨️ ផ្លូវកាត់: [Space] ចាក់/ផ្អាក • [F] ពេញអេក្រង់ • [← / →] ថយ/ទៅមុខ 5s • [Alt + ← / →] ប្តូរភាគ • [Esc] បិទ</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= LICENSE KEY ACTIVATION MODAL ================= -->
+    <div class="cinema-modal-overlay" id="modal-license">
+      <div class="license-dialog-box">
+        <button class="btn-close-modal" id="btn-close-license" title="Close">✕</button>
+        <div class="license-modal-content">
+          <div class="license-crown-icon">👑</div>
+          <h2 class="license-modal-title">FDR Drama DL Pro - VIP License Activation</h2>
+          <p class="license-modal-sub">ចាក់សោរបើកសិទ្ធិប្រើប្រាស់ពេញលេញ 100% គ្មានដែនកំណត់ (Unlimited Turbo VIP)</p>
+
+          <button class="btn-buy-khqr-gold" id="btn-open-buy-khqr">
+            ⚡ ទិញ Key តាម QR (ស្កេនបង់លុយ Auto Activate ភ្លាមៗ)
+          </button>
+          <div class="license-or-divider"><span>ឬ បញ្ចូល License Key ដោយដៃ</span></div>
+
+          <div class="license-device-card">
+            <div class="device-label">🖥️ Device ID របស់កុំព្យូទ័រនេះ (ចម្លងផ្ញើទៅកាន់ Admin ដើម្បីទិញ Key):</div>
+            <div class="device-code-row">
+              <span class="device-code-text" id="modal-device-id-val">FDR-XXXX-XXXX-XXXX</span>
+              <button class="btn-tool-gold" id="btn-copy-device-id-modal">📋 Copy Device ID</button>
+            </div>
+          </div>
+
+          <div class="license-input-card">
+            <div class="license-input-label">🔑 បញ្ចូល License Key ដែលទទួលបានពី Admin:</div>
+            <input type="text" id="input-license-key" class="license-key-input" placeholder="PRO-XXXX-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off">
+            <div class="license-feedback-msg" id="license-feedback-msg" style="display:none;"></div>
+          </div>
+
+          <div class="license-modal-actions">
+            <button class="btn-activate-submit" id="btn-submit-activate">⚡ ដំណើរការ Activate Key ឥឡូវនេះ</button>
+            <button class="btn-deactivate-key" id="btn-deactivate-key" style="display:none;">🗑️ ដោះ Key ចេញ</button>
+          </div>
+
+          <div class="license-current-status-banner" id="modal-license-status-banner">
+            <!-- Will show status dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= NBC BAKONG KHQR PAYMENT MODAL ================= -->
+    <div class="cinema-modal-overlay" id="modal-buy-khqr">
+      <div class="khqr-dialog-box">
+        <button class="btn-close-modal" id="btn-close-khqr" title="Close">✕</button>
+        
+        <!-- Official KHQR Header Banner -->
+        <div class="khqr-official-banner">
+          <div class="khqr-tag-red">KHQR</div>
+          <div class="khqr-banks-tag">គាំទ្រគ្រប់ធនាគារ (ABA, Wing, ACLEDA, Canadia...)</div>
+        </div>
+
+        <div class="khqr-body-content">
+          <div class="khqr-merchant-title" id="khqr-merchant-name">ADMIN FDR</div>
+          <div class="khqr-desc-text">ស្កេនបង់ប្រាក់ដើម្បី Activate License ពេញលេញ 100% ស្វ័យប្រវត្ត</div>
+
+          <!-- Plan Selection Buttons -->
+          <div class="khqr-plans-bar" id="khqr-plans-bar">
+            <button type="button" class="btn-plan-choice" data-plan="1MONTH" data-price="2.99">
+              <span class="plan-choice-name">1 ខែ</span>
+              <span class="plan-choice-cost">$2.99</span>
+            </button>
+            <button type="button" class="btn-plan-choice" data-plan="3MONTHS" data-price="4.99">
+              <span class="plan-choice-name">3 ខែ</span>
+              <span class="plan-choice-cost">$4.99</span>
+            </button>
+            <button type="button" class="btn-plan-choice" data-plan="1YEAR" data-price="9.99">
+              <span class="plan-choice-name">1 ឆ្នាំ</span>
+              <span class="plan-choice-cost">$9.99</span>
+            </button>
+            <button type="button" class="btn-plan-choice active" data-plan="LIFETIME" data-price="25.00">
+              <span class="plan-choice-name">👑 ប្រើរហូត</span>
+              <span class="plan-choice-cost">$25.00</span>
+            </button>
+          </div>
+
+          <!-- Dynamic QR Image Canvas -->
+          <div class="khqr-qr-frame">
+            <img id="khqr-img-display" src="" alt="KHQR Code" class="khqr-image">
+            <div class="khqr-currency-badge" id="khqr-amount-badge">$25.00 USD</div>
+          </div>
+
+          <div class="khqr-info-pills" style="display: none;">
+            <div class="khqr-pill">
+              <span class="pill-label">Device ID:</span>
+              <span class="pill-val" id="khqr-device-id">FDR-XXXX-XXXX-XXXX</span>
+            </div>
+            <div class="khqr-pill">
+              <span class="pill-label">គណនីទទួល:</span>
+              <span class="pill-val" id="khqr-bank-target">ABA / Bakong</span>
+            </div>
+          </div>
+
+          <!-- Live Payment Status -->
+          <div class="khqr-status-indicator" id="khqr-status-box">
+            <span class="khqr-pulse-dot"></span>
+            <span id="khqr-status-text">⚡ កំពុងរង់ចាំការទូទាត់ប្រាក់... (ប្រព័ន្ធនឹង Activate ស្វ័យប្រវត្តិ)</span>
+          </div>
+
+          <div class="khqr-support-actions" style="display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap;">
+            <button type="button" class="btn-tool-pill" id="btn-khqr-copy-bill">📋 Copy ព័ត៌មានបាញ់ប្រាក់</button>
+            <button type="button" class="btn-tool-pill" id="btn-khqr-telegram-slip" style="background:rgba(0,136,204,0.2); border-color:rgba(0,136,204,0.4); color:#38bdf8;">✈️ ផ្ញើ Slip ទៅ Telegram Admin</button>
+          </div>
+
+          <!-- Quick Key Activation Card in KHQR Modal -->
+          <div class="khqr-quick-key-card" style="margin-top:12px; padding:10px 14px; background:rgba(0,0,0,0.5); border:1px solid rgba(212,175,55,0.25); border-radius:8px; text-align:left;">
+            <div style="font-size:11px; color:var(--gold-300); font-weight:700; margin-bottom:6px;">🔑 ឬ បញ្ចូល Key ដែលទទួលបានពី Admin ដើម្បី Unlock ភ្លាមៗ៖</div>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="khqr-input-fast-key" class="admin-input-control" style="flex:1; font-family:monospace; letter-spacing:1px; font-size:12px;" placeholder="PRO-XXXX-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off">
+              <button type="button" class="btn-tool-gold" id="btn-khqr-fast-activate" style="white-space:nowrap; padding:0 12px; font-size:11px;">⚡ Activate</button>
+            </div>
+          </div>
+
+          <div class="khqr-actions-row">
+            <button class="btn-khqr-check" id="btn-khqr-check-now">🔄 ពិនិត្យលុយចូលម្តងទៀត (Check Now)</button>
+            <button class="btn-khqr-cancel" id="btn-khqr-cancel">បោះបង់</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto-Shutdown Countdown Modal -->
+    <div class="cinema-modal-overlay" id="modal-shutdown">
+      <div class="shutdown-dialog-box">
+        <div class="shutdown-icon">🌙</div>
+        <h2 class="shutdown-title">ទាញយកចប់គ្រប់រឿងទាំងអស់ហើយ!</h2>
+        <p class="shutdown-desc">កុំព្យូទ័រនឹងធ្វើការបិទ (Shutdown) ស្វ័យប្រវត្តក្នុងរយៈពេល៖</p>
+        <div class="shutdown-counter" id="shutdown-timer-seconds">60</div>
+        <p class="shutdown-sub">វិនាទី</p>
+        <div class="shutdown-btns">
+          <button class="btn-shutdown-cancel" id="btn-cancel-shutdown">❌ បោះបង់ការបិទ (Cancel)</button>
+          <button class="btn-shutdown-now" id="btn-confirm-shutdown-now">⚡ បិទភ្លាមៗ (Shutdown Now)</button>
+        </div>
+      </div>
+    <!-- Auto-Updater Notification Modal -->
+    <div class="cinema-modal-overlay" id="modal-updater">
+      <div class="shutdown-dialog-box" style="max-width: 480px; padding: 26px; text-align: center;">
+        <div class="shutdown-icon" id="updater-modal-icon">🚀</div>
+        <h2 class="shutdown-title" id="updater-modal-title">រកឃើញកំណែថ្មី!</h2>
+        <p class="shutdown-desc" id="updater-modal-desc">មានកំណែថ្មីត្រូវបានដាក់ឱ្យដំណើរការ។</p>
+        <div id="updater-release-notes" style="font-size:12px; color:var(--text-muted); background:rgba(0,0,0,0.4); padding:10px; border-radius:8px; margin:12px 0; text-align:left; max-height:120px; overflow-y:auto; display:none;"></div>
+        
+        <!-- Progress Bar for Downloading -->
+        <div id="updater-progress-wrapper" style="display:none; width:100%; margin: 16px 0;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; color:var(--gold-300);">
+            <span id="updater-progress-label">⚡ កំពុងទាញយកកំណែថ្មី...</span>
+            <span id="updater-progress-percent">0%</span>
+          </div>
+          <div style="width:100%; height:10px; background:rgba(255,255,255,0.1); border-radius:6px; overflow:hidden;">
+            <div id="updater-progress-fill" style="width:0%; height:100%; background:linear-gradient(90deg, #d4af37, #f59e0b); border-radius:6px; transition:width 0.2s ease;"></div>
+          </div>
+        </div>
+
+        <div class="shutdown-btns" id="updater-modal-btns" style="margin-top:16px;">
+          <button class="btn-shutdown-cancel" id="btn-updater-cancel">បិទ (Cancel)</button>
+          <button class="btn-shutdown-now" id="btn-updater-action" style="background:linear-gradient(135deg, #d4af37, #b8860b); color:#000; font-weight:700;">⚡ ទាញយក Update</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="cinema-toast" id="cinema-toast"></div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

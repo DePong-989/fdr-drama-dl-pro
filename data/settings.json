@@ -1,0 +1,11 @@
+{
+  "downloadDir": "D:\\FDR Downlaod\\hongguo new",
+  "maxConcurrent": 5,
+  "autoMerge": true,
+  "language": "km",
+  "theme": "luxury-gold",
+  "quality": "1080p",
+  "notifications": true,
+  "ffmpegPath": "ffmpeg",
+  "concurrentDownloads": 5
+}

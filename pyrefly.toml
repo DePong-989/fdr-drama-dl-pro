@@ -1,0 +1,26 @@
+project-includes = [
+    "desktop_app.py",
+    "FDR Drama DL Pro.pyw",
+    "FDR Pro Key Generator.pyw"
+]
+project-excludes = [
+    ".venv/**",
+    "build_final/**",
+    "build_no_terminal/**",
+    "build_release/**",
+    "release_no_terminal/**",
+    "short-drama-downloader-main/**"
+]
+search-path = [
+    ".venv/Lib/site-packages",
+    "short-drama-downloader-main/short-drama-downloader-main/源码_开源版"
+]
+infer-with-first-use = false
+
+[errors]
+missing-attribute = "ignore"
+missing-import = "ignore"
+bad-assignment = "ignore"
+not-callable = "ignore"
+bad-index = "ignore"
+no-matching-overload = "ignore"

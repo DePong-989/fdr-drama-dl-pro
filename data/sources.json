@@ -1,0 +1,85 @@
+[
+  {
+    "id": "ffzy-dramas",
+    "name": "🔥 ហុងកួ / ភាពយន្តភាគខ្លី គ្រប់ភាគ (FFZY 70-150 ភាគពេញ)",
+    "api": "https://cj.ffzyapi.com/api.php/provide/vod",
+    "type": "maccms_v10",
+    "defaultTypeId": 36,
+    "enabled": true,
+    "description": "19,870+ Full Chinese Short Dramas with all 60-150 separate episodes, 1080P fast CDN",
+    "categories": [
+      { "id": 36, "name": "全部短剧 (All 70-150 Ep Short Dramas)" }
+    ]
+  },
+  {
+    "id": "hongguo-lzi",
+    "name": "🎬 红果精选短剧全库 (Hongguo VIP 1080P - 39,000+ រឿង)",
+    "api": "https://cj.lziapi.com/api.php/provide/vod",
+    "type": "maccms_v10",
+    "defaultTypeId": 46,
+    "enabled": true,
+    "description": "39,000+ Hongguo Official Short Dramas (Human Acting 24,500+ & AI 漫剧 14,400+), Super Fast 1080P CDN",
+    "categories": [
+      { "id": 46, "name": "全部短剧 (All Short Dramas)" },
+      { "id": 52, "name": "AI漫剧 (AI Comic Dramas)" },
+      { "id": 7, "name": "喜剧片 (Comedy / Funny)" },
+      { "id": 13, "name": "国产剧 (Chinese Series)" }
+    ]
+  },
+  {
+    "id": "hongguo-official",
+    "name": "🌟 红果官方实时热播 (Hongguo Official Realtime Trending)",
+    "api": "hongguo-official",
+    "type": "hongguo_official",
+    "defaultTypeId": 0,
+    "enabled": true,
+    "description": "Direct realtime trending feed from ByteDance Hongguo (红果短剧) with 1080P multi-CDN playback",
+    "categories": [
+      { "id": 0, "name": "全部官方热播 (All Official Trending)" }
+    ]
+  },
+  {
+    "id": "bfzy-dramas",
+    "name": "暴风短剧全集库 (Bfzy 12,000+ Dramas)",
+    "api": "https://bfzyapi.com/api.php/provide/vod",
+    "type": "maccms_v10",
+    "defaultTypeId": 58,
+    "enabled": true,
+    "description": "12,180+ Short Dramas with complete episodes collection",
+    "categories": [
+      { "id": 58, "name": "短剧大全 (All Short Dramas)" }
+    ]
+  },
+  {
+    "id": "subo-all-dramas",
+    "name": "速播短剧分类全库 (Subo Full Categories)",
+    "api": "https://subocaiji.com/api.php/provide/vod",
+    "type": "maccms_v10",
+    "defaultTypeId": 27,
+    "enabled": true,
+    "description": "Sub-categorized short dramas (Reversal, AI, Romance, Urban, Time Travel, Mystery)",
+    "categories": [
+      { "id": 27, "name": "短剧总库 (All Dramas)" },
+      { "id": 42, "name": "反转爽剧 (Reversal & Slap)" },
+      { "id": 45, "name": "AI漫剧 (AI Comic Dramas)" },
+      { "id": 40, "name": "言情总裁 (Romance & CEO)" },
+      { "id": 38, "name": "现代都市 (Modern Urban)" },
+      { "id": 39, "name": "穿越年代 (Time Travel)" },
+      { "id": 37, "name": "古装仙侠 (Costume & Ancient)" },
+      { "id": 43, "name": "脑洞悬疑 (Mystery & Suspense)" },
+      { "id": 12, "name": "喜剧专区 (Comedy)" }
+    ]
+  },
+  {
+    "id": "jinying-hd",
+    "name": "金鹰高清短剧 (Jinying HD VIP)",
+    "api": "https://jinyingzy.com/provide/vod/from/jinying/at/json",
+    "type": "maccms_v10",
+    "defaultTypeId": 0,
+    "enabled": true,
+    "description": "116,000+ HD streaming titles, high bandwidth multi-CDN",
+    "categories": [
+      { "id": 0, "name": "全库资源 (All)" }
+    ]
+  }
+]

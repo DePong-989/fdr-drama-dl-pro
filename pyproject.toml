@@ -1,0 +1,9 @@
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = [
+    ".venv/Lib/site-packages",
+    "short-drama-downloader-main/short-drama-downloader-main/源码_开源版"
+]
+reportMissingImports = false
+reportMissingTypeStubs = false
