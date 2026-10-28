@@ -2964,12 +2964,12 @@ body {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 24px 16px;
+  padding: 12px 18px 14px;
   overflow: hidden;
   user-select: none;
   transition: opacity 0.28s cubic-bezier(0.2, 0, 0, 1), transform 0.28s cubic-bezier(0.2, 0, 0, 1);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: inset 0 0 45px rgba(0, 0, 0, 0.85);
   will-change: opacity, transform;
 }
 
@@ -2989,8 +2989,8 @@ body {
 }
 
 .intro-glow-gold {
-  width: 400px;
-  height: 400px;
+  width: 300px;
+  height: 300px;
   background: radial-gradient(circle, rgba(212, 175, 55, 0.8) 0%, transparent 70%);
   top: 15%;
   left: 50%;
@@ -2999,8 +2999,8 @@ body {
 }
 
 .intro-glow-blue {
-  width: 300px;
-  height: 300px;
+  width: 250px;
+  height: 250px;
   background: radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, transparent 70%);
   bottom: 10%;
   right: 20%;
@@ -3068,20 +3068,20 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  max-width: 620px;
+  max-width: 520px;
   z-index: 10;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 
 /* Hologram Rings & App Logo */
 .intro-hologram-wrap {
   position: relative;
-  width: 124px;
-  height: 124px;
+  width: 100px;
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .hologram-orbit-ring {
@@ -3091,23 +3091,23 @@ body {
 }
 
 .orbit-1 {
-  width: 124px;
-  height: 124px;
+  width: 100px;
+  height: 100px;
   border: 1.5px dashed rgba(212, 175, 55, 0.45);
   animation: spin-clockwise 16s linear infinite;
-  box-shadow: 0 0 25px rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
 }
 
 .orbit-2 {
-  width: 104px;
-  height: 104px;
+  width: 84px;
+  height: 84px;
   border: 1px solid rgba(59, 130, 246, 0.35);
   animation: spin-counter 12s linear infinite;
 }
 
 .orbit-3 {
-  width: 142px;
-  height: 142px;
+  width: 114px;
+  height: 114px;
   border: 1px dotted rgba(212, 175, 55, 0.25);
   animation: spin-clockwise 22s linear infinite;
 }
@@ -3123,12 +3123,12 @@ body {
 }
 
 .intro-emblem-disc {
-  width: 88px;
-  height: 88px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: radial-gradient(circle, #192236 0%, #0a0e18 100%);
   border: 2px solid var(--gold-400);
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.5), inset 0 0 15px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.5), inset 0 0 12px rgba(212, 175, 55, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3155,7 +3155,7 @@ body {
 
 /* Typography */
 .intro-brand-meta {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .intro-badge-vip {
@@ -3163,31 +3163,31 @@ body {
   background: rgba(212, 175, 55, 0.12);
   border: 1px solid rgba(212, 175, 55, 0.35);
   color: var(--gold-300);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 1.5px;
-  padding: 3px 12px;
+  letter-spacing: 1.2px;
+  padding: 2px 10px;
   border-radius: var(--radius-full);
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .intro-title-primary {
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 900;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   background: linear-gradient(135deg, #ffffff 10%, #fff2b2 45%, #d4af37 85%, #aa820a 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 4px;
-  text-shadow: 0 0 25px rgba(212, 175, 55, 0.35);
+  margin-bottom: 2px;
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
 }
 
 .intro-tagline {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--gold-300);
   margin-bottom: 0;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
 }
 
 .intro-description {
@@ -3199,22 +3199,23 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 14px;
+  gap: 14px;
+  margin-bottom: 8px;
 }
 
 .btn-power-main {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 10px 24px;
+  gap: 8px;
+  padding: 8px 20px;
   border-radius: var(--radius-full);
   cursor: pointer;
   border: none;
   outline: none;
   transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  -webkit-app-region: no-drag;
 }
 
 /* POWER ON Button (Gold/Cyber Emerald Neon) */

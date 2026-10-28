@@ -19,11 +19,12 @@
       <div class="intro-grid-stars"></div>
 
       <!-- Intro Top Status Header -->
-      <div class="intro-top-bar">
+      <div class="intro-top-bar" style="position:relative; width:100%; display:flex; align-items:center; justify-content:center;">
         <div class="intro-sys-status">
           <span class="status-pulse-dot"></span>
           <span>FDR DRAMA DL PRO CORE • SYSTEM ONLINE</span>
         </div>
+        <button id="btn-intro-close" style="position:absolute; right:0; top:0; background:rgba(255,255,255,0.06); border:none; color:var(--text-sub); cursor:pointer; font-size:12px; padding:3px 8px; border-radius:6px; -webkit-app-region:no-drag; transition:all 0.2s;" title="បិទ (Exit)">✕</button>
       </div>
 
       <!-- Center Hologram Cinema Power Hub -->
@@ -450,7 +451,7 @@
 
           <div class="setting-row">
             <div>
-              <div class="setting-title">🔄 Version កម្មវិធី: <strong id="setting-app-version" style="color:var(--gold-400); margin-left:6px;">v2.0.2</strong></div>
+              <div class="setting-title">🔄 Version កម្មវិធី: <strong id="setting-app-version" style="color:var(--gold-400); margin-left:6px;">v2.0.3</strong></div>
             </div>
             <div class="setting-ctrl" style="display:flex; align-items:center; gap:8px;">
               <button type="button" class="btn-tool-gold" id="btn-trigger-update" style="display:none; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border-color:#34d399; font-weight:800; padding:6px 14px; border-radius:6px; box-shadow:0 0 15px rgba(16,185,129,0.35); cursor:pointer;">

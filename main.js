@@ -221,13 +221,13 @@ app.on('before-quit', () => {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 960,
-    minHeight: 620,
+    width: 580,
+    height: 420,
+    minWidth: 580,
+    minHeight: 420,
     frame: false,
     center: true,
-    resizable: true,
+    resizable: false,
     icon: path.join(__dirname, 'FDR Download Drama.ico'),
     backgroundColor: '#0a0b10',
     show: false,
@@ -288,8 +288,10 @@ ipcMain.handle('window:maximize', () => {
 
 ipcMain.handle('window:launch-main', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.setMinimumSize(1080, 680);
-    mainWindow.maximize();
+    mainWindow.setResizable(true);
+    mainWindow.setMinimumSize(960, 620);
+    mainWindow.setSize(1280, 800);
+    mainWindow.center();
     return true;
   }
   return false;

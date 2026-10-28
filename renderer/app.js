@@ -265,6 +265,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  const btnIntroClose = document.getElementById('btn-intro-close');
+  if (btnIntroClose) {
+    btnIntroClose.onclick = () => api.closeWindow();
+  }
+
   // Helper: Update Catalog Heading Title dynamically
   function updateCatalogHeading() {
     if (!catalogHeadingTitle) return;
@@ -2678,7 +2683,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnUpdaterCancel = document.getElementById('btn-updater-cancel');
   const btnUpdaterAction = document.getElementById('btn-updater-action');
 
-  let currentAppVersion = '2.0.2';
+  let currentAppVersion = '2.0.3';
   let isDownloadingUpdate = false;
 
   if (api && api.getAppVersion) {
