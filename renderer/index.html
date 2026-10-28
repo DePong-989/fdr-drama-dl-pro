@@ -170,6 +170,12 @@
           <button class="lang-dot" data-lang="zh">中文</button>
         </div>
 
+        <!-- Auto-Update Floating Badge (Appears ONLY when an update is available) -->
+        <button class="btn-vip-badge" id="header-update-badge" style="display:none; background:linear-gradient(135deg, #10b981, #059669); border-color:#34d399; color:#fff; box-shadow:0 0 15px rgba(16,185,129,0.4); cursor:pointer;" title="មានកំណែថ្មី! ចុចដើម្បី Update ភ្លាមៗ">
+          <span style="font-size:12px;">🚀</span>
+          <span id="header-update-badge-text" style="font-weight:800; font-size:11px;">Update Available</span>
+        </button>
+
         <!-- VIP Key Activation Trigger Badge -->
         <button class="btn-vip-badge" id="btn-vip-badge" title="ចុចដើម្បីពិនិត្យ ឬបញ្ចូល Key Activation">
           <span class="vip-badge-icon" id="vip-badge-icon">👑</span>
@@ -444,14 +450,16 @@
 
           <div class="setting-row">
             <div>
-              <div class="setting-title">🔄 ពិនិត្យ Update កម្មវិធី (Online Auto-Update):</div>
-              <div class="setting-desc">ពិនិត្យមើលកំណែថ្មី និងទាញយកស្វ័យប្រវត្តពី GitHub Releases (Version: <strong id="setting-app-version" style="color:var(--gold-400);">v2.0.1</strong>)</div>
+              <div class="setting-title">🔄 កំណែកម្មវិធី (App Version):</div>
+              <div class="setting-desc">ស្ថានភាពកំណែកម្មវិធីបច្ចុប្បន្ន: <strong id="setting-app-version" style="color:var(--gold-400);">v2.0.1</strong></div>
             </div>
             <div class="setting-ctrl" style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-              <button type="button" class="btn-tool-gold" id="btn-check-updater-settings">
-                <span>🔄 ពិនិត្យកំណែថ្មី (Check Update)</span>
+              <button type="button" class="btn-tool-gold" id="btn-trigger-update" style="display:none; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border-color:#34d399; font-weight:800; box-shadow:0 0 15px rgba(16,185,129,0.35); cursor:pointer;">
+                <span id="btn-trigger-update-text">🚀 អាប់ដេតឥឡូវនេះ (Update Now)</span>
               </button>
-              <div id="setting-updater-status" style="font-size:11px; color:var(--text-muted); display:none;"></div>
+              <div id="setting-updater-status" style="font-size:11.5px; color:var(--text-muted);">
+                <span id="setting-updater-uptodate" style="color:#34d399;">✅ កម្មវិធីជាកំណែចុងក្រោយបង្អស់</span>
+              </div>
             </div>
           </div>
 

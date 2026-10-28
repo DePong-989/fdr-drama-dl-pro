@@ -943,5 +943,44 @@ ipcMain.handle('updater:get-version', () => {
   return app.getVersion();
 });
 
+// Semver comparison helper
+function isNewerVersion(remoteVer, currentVer) {
+  const clean = (v) => String(v || '').replace(/^v/i, '').trim().split('.').map(n => parseInt(n, 10) || 0);
+  const r = clean(remoteVer);
+  const c = clean(currentVer);
+  for (let i = 0; i < Math.max(r.length, c.length); i++) {
+    const rVal = r[i] || 0;
+    const cVal = c[i] || 0;
+    if (rVal > cVal) return true;
+    if (rVal < cVal) return false;
+  }
+  return false;
+}
+
+// Silent GitHub Releases checker
+ipcMain.handle('updater:check-silent', async () => {
+  const curVer = app.getVersion();
+  try {
+    const res = await fetch('https://api.github.com/repos/DePong-989/fdr-drama-dl-pro/releases/latest', {
+      headers: { 'User-Agent': 'FDR-Drama-DL-Pro-Updater' },
+      signal: AbortSignal.timeout(6000)
+    });
+    if (!res.ok) return { hasUpdate: false, currentVersion: curVer };
+    const data = await res.json();
+    const remoteVer = (data.tag_name || '').replace(/^v/i, '').trim();
+
+    const isNewer = isNewerVersion(remoteVer, curVer);
+    return {
+      hasUpdate: isNewer,
+      currentVersion: curVer,
+      latestVersion: remoteVer,
+      releaseNotes: data.body || '',
+      releaseUrl: data.html_url
+    };
+  } catch (err) {
+    return { hasUpdate: false, error: err.message, currentVersion: curVer };
+  }
+});
+
 
 

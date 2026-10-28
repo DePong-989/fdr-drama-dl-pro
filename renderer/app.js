@@ -2657,10 +2657,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load Admin KHQR config into settings inputs
   loadAdminPaymentConfig();
 
-  // 17. Auto-Updater Controller (GitHub Releases)
-  const btnCheckUpdaterSettings = document.getElementById('btn-check-updater-settings');
+  // 17. Automatic Silent Updater Controller (GitHub Releases)
   const settingAppVersion = document.getElementById('setting-app-version');
-  const settingUpdaterStatus = document.getElementById('setting-updater-status');
+  const btnTriggerUpdate = document.getElementById('btn-trigger-update');
+  const btnTriggerUpdateText = document.getElementById('btn-trigger-update-text');
+  const settingUpdaterUptodate = document.getElementById('setting-updater-uptodate');
+  const headerUpdateBadge = document.getElementById('header-update-badge');
+  const headerUpdateBadgeText = document.getElementById('header-update-badge-text');
 
   const modalUpdater = document.getElementById('modal-updater');
   const updaterModalTitle = document.getElementById('updater-modal-title');
@@ -2673,11 +2676,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnUpdaterCancel = document.getElementById('btn-updater-cancel');
   const btnUpdaterAction = document.getElementById('btn-updater-action');
 
-  let updaterCurrentState = 'idle';
-
+  let currentAppVersion = '2.0.1';
   if (api && api.getAppVersion) {
     api.getAppVersion().then(v => {
-      if (settingAppVersion && v) settingAppVersion.textContent = `v${v}`;
+      if (v) {
+        currentAppVersion = v;
+        if (settingAppVersion) settingAppVersion.textContent = `v${v}`;
+      }
     }).catch(() => {});
   }
 
@@ -2706,53 +2711,76 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (btnUpdaterCancel) btnUpdaterCancel.onclick = closeUpdaterModal;
 
+  // Trigger update flow when Update button is clicked
+  async function triggerUpdateFlow(updateInfo) {
+    showUpdaterModal(
+      `🎉 រកឃើញកំណែថ្មី v${updateInfo.latestVersion}!`,
+      `កំណែថ្មីនេះមានការកែលម្អមុខងារ និងដំណើរការរលូនជាងមុន។ តើអ្នកចង់ទាញយកឥឡូវនេះទេ?`,
+      '⚡ ទាញយក Update ឥឡូវនេះ',
+      async () => {
+        if (btnUpdaterAction) {
+          btnUpdaterAction.disabled = true;
+          btnUpdaterAction.textContent = '⏳ កំពុងចាប់ផ្តើម...';
+        }
+        if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'block';
+        try {
+          await api.downloadUpdate();
+        } catch (err) {
+          showToast(`❌ ${err.message}`);
+          if (btnUpdaterAction) {
+            btnUpdaterAction.disabled = false;
+            btnUpdaterAction.textContent = '⚡ ព្យាយាមម្តងទៀត';
+          }
+        }
+      },
+      updateInfo.releaseNotes
+    );
+  }
+
+  // Silent automatic check on boot
+  async function checkSilentUpdate() {
+    try {
+      const res = await api.checkUpdateSilently();
+      console.log('[AutoUpdater Silent Check]:', res);
+
+      if (res && res.hasUpdate && res.latestVersion) {
+        // A newer version exists! Show Update button in Settings and Header!
+        if (btnTriggerUpdate) {
+          btnTriggerUpdate.style.display = 'inline-flex';
+          if (btnTriggerUpdateText) btnTriggerUpdateText.textContent = `🚀 អាប់ដេតទៅ v${res.latestVersion} ឥឡូវនេះ`;
+          btnTriggerUpdate.onclick = () => triggerUpdateFlow(res);
+        }
+        if (headerUpdateBadge) {
+          headerUpdateBadge.style.display = 'inline-flex';
+          if (headerUpdateBadgeText) headerUpdateBadgeText.textContent = `🚀 Update v${res.latestVersion}`;
+          headerUpdateBadge.onclick = () => triggerUpdateFlow(res);
+        }
+        if (settingUpdaterUptodate) {
+          settingUpdaterUptodate.innerHTML = `<span style="color:#fbbf24; font-weight:700;">🎉 មានកំណែថ្មី v${res.latestVersion}!</span>`;
+        }
+      } else {
+        // Up to date! HIDE UPDATE BUTTONS COMPLETELY!
+        if (btnTriggerUpdate) btnTriggerUpdate.style.display = 'none';
+        if (headerUpdateBadge) headerUpdateBadge.style.display = 'none';
+        if (settingUpdaterUptodate) {
+          settingUpdaterUptodate.innerHTML = `<span style="color:#34d399;">✅ កម្មវិធីជាកំណែចុងក្រោយបង្អស់ (v${res?.currentVersion || currentAppVersion})</span>`;
+        }
+      }
+    } catch (e) {
+      console.warn('Silent update check failed:', e);
+    }
+  }
+
+  // Listen to background autoUpdater events (during downloading / downloaded)
   if (api && api.onUpdateStatus) {
     api.onUpdateStatus((data) => {
-      console.log('[AutoUpdater Status]:', data);
       if (!data) return;
-
-      if (data.status === 'checking') {
-        if (settingUpdaterStatus) {
-          settingUpdaterStatus.style.display = 'block';
-          settingUpdaterStatus.style.color = '#38bdf8';
-          settingUpdaterStatus.textContent = '⏳ កំពុងពិនិត្យមើលកំណែថ្មីពី GitHub Releases...';
-        }
-      } else if (data.status === 'available') {
-        updaterCurrentState = 'available';
-        if (settingUpdaterStatus) {
-          settingUpdaterStatus.style.display = 'block';
-          settingUpdaterStatus.style.color = '#34d399';
-          settingUpdaterStatus.textContent = `🎉 រកឃើញកំណែថ្មី v${data.version}!`;
-        }
-        showUpdaterModal(
-          `🎉 រកឃើញកំណែថ្មី v${data.version}!`,
-          `កំណែថ្មីនេះមានការកែលម្អមុខងារ និងដំណើរការរលូនជាងមុន។ តើអ្នកចង់ទាញយកឥឡូវនេះទេ?`,
-          '⚡ ទាញយក Update ឥឡូវនេះ',
-          async () => {
-            if (btnUpdaterAction) {
-              btnUpdaterAction.disabled = true;
-              btnUpdaterAction.textContent = '⏳ កំពុងចាប់ផ្តើម...';
-            }
-            if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'block';
-            await api.downloadUpdate();
-          },
-          data.releaseNotes
-        );
-      } else if (data.status === 'not-available') {
-        if (settingUpdaterStatus) {
-          settingUpdaterStatus.style.display = 'block';
-          settingUpdaterStatus.style.color = '#34d399';
-          settingUpdaterStatus.textContent = data.message || '✅ កម្មវិធីជាកំណែចុងក្រោយបំផុតហើយ!';
-        }
-        showToast(data.message || '✅ កម្មវិធីជាកំណែចុងក្រោយបង្អស់ហើយ!');
-      } else if (data.status === 'downloading') {
-        updaterCurrentState = 'downloading';
+      if (data.status === 'downloading') {
         if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'block';
         if (updaterProgressPercent) updaterProgressPercent.textContent = `${data.percent}%`;
         if (updaterProgressFill) updaterProgressFill.style.width = `${data.percent}%`;
         if (updaterProgressLabel) updaterProgressLabel.textContent = `⚡ កំពុងទាញយក (${data.percent}%)...`;
       } else if (data.status === 'downloaded') {
-        updaterCurrentState = 'downloaded';
         if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'none';
         showUpdaterModal(
           '🎉 ទាញយកចប់សព្វគ្រប់!',
@@ -2764,11 +2792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
         showToast(`🎉 បានទាញយកកំណែថ្មី v${data.version} រួចរាល់!`);
       } else if (data.status === 'error') {
-        if (settingUpdaterStatus) {
-          settingUpdaterStatus.style.display = 'block';
-          settingUpdaterStatus.style.color = '#f87171';
-          settingUpdaterStatus.textContent = data.message || '❌ បរាជ័យក្នុងការពិនិត្យ Update';
-        }
+        showToast(`❌ បរាជ័យក្នុងការ Update: ${data.message || data.error}`);
         if (btnUpdaterAction) {
           btnUpdaterAction.disabled = false;
           btnUpdaterAction.textContent = '⚡ ព្យាយាមម្តងទៀត';
@@ -2777,33 +2801,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  if (btnCheckUpdaterSettings) {
-    btnCheckUpdaterSettings.onclick = async () => {
-      btnCheckUpdaterSettings.disabled = true;
-      btnCheckUpdaterSettings.innerHTML = '⏳ <span>កំពុងពិនិត្យ...</span>';
-      if (settingUpdaterStatus) {
-        settingUpdaterStatus.style.display = 'block';
-        settingUpdaterStatus.style.color = 'var(--gold-400)';
-        settingUpdaterStatus.textContent = 'កំពុងពិនិត្យកំណែថ្មីពី GitHub...';
-      }
-
-      try {
-        const res = await api.checkForUpdates();
-        if (res && res.status === 'dev') {
-          showToast(res.message);
-          if (settingUpdaterStatus) {
-            settingUpdaterStatus.style.color = 'var(--gold-400)';
-            settingUpdaterStatus.textContent = res.message;
-          }
-        }
-      } catch (err) {
-        showToast(`❌ បរាជ័យ: ${err.message}`);
-      } finally {
-        btnCheckUpdaterSettings.disabled = false;
-        btnCheckUpdaterSettings.innerHTML = '🔄 <span>ពិនិត្យកំណែថ្មី (Check Update)</span>';
-      }
-    };
-  }
+  // Run silent check 1.5 seconds after app loads
+  setTimeout(checkSilentUpdate, 1500);
 
   // 18. Kickoff Initial Hongguo Catalog
   loadHongguoDramas();
