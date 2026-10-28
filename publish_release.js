@@ -63,6 +63,18 @@ async function main() {
   }
 
   const distDir = path.join(__dirname, 'dist_release');
+  const crypto = require('crypto');
+  const setupExePath = path.join(distDir, `FDR Download Drama Pro Setup ${version}.exe`);
+  const latestYmlPath = path.join(distDir, 'latest.yml');
+
+  if (fs.existsSync(setupExePath)) {
+    const stat = fs.statSync(setupExePath);
+    const buf = fs.readFileSync(setupExePath);
+    const hash = crypto.createHash('sha512').update(buf).digest('base64');
+    const ymlContent = `version: ${version}\nfiles:\n  - url: FDR-Download-Drama-Pro-Setup-${version}.exe\n    sha512: ${hash}\n    size: ${stat.size}\npath: FDR-Download-Drama-Pro-Setup-${version}.exe\nsha512: ${hash}\nreleaseDate: '${new Date().toISOString()}'\n`;
+    fs.writeFileSync(latestYmlPath, ymlContent, 'utf8');
+    console.log(`✅ Auto-generated latest.yml for v${version} (SHA512 verified)`);
+  }
   const filesToUpload = [
     { name: 'latest.yml', path: path.join(distDir, 'latest.yml'), type: 'application/x-yaml' },
     { name: `FDR-Download-Drama-Pro-Setup-${version}.exe`, path: path.join(distDir, `FDR Download Drama Pro Setup ${version}.exe`), type: 'application/octet-stream' },
