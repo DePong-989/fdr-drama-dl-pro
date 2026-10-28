@@ -1719,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ⚡ ទាញយក
               </button>
               <button class="btn-series-tool btn-series-change-folder" title="ផ្លាស់ប្តូរ Folder រក្សាទុកសម្រាប់រឿងនេះ">
-                📁 ប្តូរ Folder
+                📁 ដូរ Folder
               </button>
               <button class="btn-series-tool btn-series-toggle" title="Pause / Resume">
                 ⏸️ ផ្អាក
@@ -1731,10 +1731,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 🗑️ ដកចេញ
               </button>
               <button class="btn-series-tool btn-series-merge" title="ផ្គុំ ${completed} ភាគជារឿងពេញ Movie (Lossless Copy)">
-                🎬 ផ្គុំជារឿងពេញ
+                🎬 ផ្គុំរឿង
               </button>
               <button class="btn-series-tool btn-series-audio" title="ចម្រាញ់យកសំឡេង MP3 សម្រាប់ស្តាប់ (High Quality 192kbps)">
-                🎵 ចម្រាញ់ MP3
+                🎵 MP3
               </button>
               <button class="btn-series-tool btn-series-open" title="Open Folder">
                 📁 បើកថត

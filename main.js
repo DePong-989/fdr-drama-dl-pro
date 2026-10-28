@@ -221,10 +221,10 @@ app.on('before-quit', () => {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 720,
-    height: 520,
-    minWidth: 700,
-    minHeight: 480,
+    width: 1280,
+    height: 800,
+    minWidth: 960,
+    minHeight: 620,
     frame: false,
     center: true,
     resizable: true,
