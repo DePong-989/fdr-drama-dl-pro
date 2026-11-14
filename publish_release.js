@@ -52,7 +52,7 @@ async function main() {
       body: JSON.stringify({
         tag_name: `v${version}`,
         name: `FDR Drama DL Pro v${version}`,
-        body: `🎉 កំណែអាប់ដេតផ្លូវការ FDR Drama DL Pro v${version}!\n\n- មុខងារស្វែងរក និងទាញយករឿងលឿនជាងមុន\n- ប្រព័ន្ធ Auto-Updater ស្វ័យប្រវត្ត\n- ប្រព័ន្ធទូទាត់ Bakong KHQR`,
+        body: `🎉 កំណែអាប់ដេតផ្លូវការ FDR Drama DL Pro v${version}!\n\n✨ អ្វីដែលថ្មី និងការកែលម្អ៖\n- 🔍 មុខងារ Search ថ្មី៖ វាយចំណងជើងរឿងឃើញភ្លាមៗ មិនបាច់ចាំដាក់ Link ទៀតទេ\n- 🖼️ Auto-Download Thumbnail៖ ទាញយករូប Poster/Thumbnail ចូល Folder រឿងដោយស្វ័យប្រវត្តិ\n- 📐 បែងចែកជម្រើសទំហំវីដេអូ 16:9 ទទឹង និង 9:16 បញ្ឈរ ដាច់ដោយឡែកពី AI និងមនុស្សសម្តែង\n- ⚡ ដំណើរការរលូនលើគ្រប់កុំព្យូទ័រ (Universal Compatibility) បំបាត់បញ្ហាគាំង Background\n- 📁 កែសម្រួលការប្តូរ Folder ទាញយក មិនឱ្យបាត់រឿងចាស់ៗ`,
         draft: false
       })
     });

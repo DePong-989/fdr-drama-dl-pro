@@ -5,21 +5,31 @@ const { spawn } = require('child_process');
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
-// High-performance GPU hardware acceleration flags for silky smooth 60fps/120fps UI rendering
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
+// Single Instance Lock: Prevents phantom background duplicate processes
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
+
+// Universal Compatibility Switch:
+// Do NOT force aggressive GPU rasterization or ignore GPU blocklist, which deadlocks old Intel HD graphics!
+// Standard Chromium hardware acceleration is kept, with fallback if GPU is unavailable.
+app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
+app.commandLine.appendSwitch('no-sandbox');
 
 // Configure custom isolated cache directory to prevent access denied error on Windows
 const customUserData = path.join(app.getPath('appData'), 'FDR_DRAMAS_DL_USERDATA');
 app.setPath('userData', customUserData);
-app.commandLine.appendSwitch('no-sandbox');
 
 const DramaDownloader = require('./src/downloader');
 const VideoSniffer = require('./src/sniffer');
 const DramaApi = require('./src/api');
 const LicenseManager = require('./src/license');
 const KHQRManager = require('./src/khqr');
+const { downloadAndDecryptHongguo, resolveHongguoPlayUrl } = require('./src/hongguo');
+const { createCastingService } = require('./src/hongguo/casting');
+const castingService = createCastingService();
 
 // Resolve writable dataDir (handles development & packaged app.asar environment)
 const isPackaged = app.isPackaged;
@@ -123,8 +133,8 @@ const defaultDownloadDir = isPackaged
 // Initialize settings
 let currentSettings = readJson(settingsFile, {
   downloadDir: defaultDownloadDir,
-  maxConcurrent: 5,
-  concurrentDownloads: 5,
+  maxConcurrent: 3,
+  concurrentDownloads: 3,
   autoMerge: true,
   language: 'km',
   theme: 'luxury-gold',
@@ -136,7 +146,7 @@ let currentSettings = readJson(settingsFile, {
 // Initialize downloader
 const downloader = new DramaDownloader({
   downloadDir: currentSettings.downloadDir || defaultDownloadDir,
-  maxConcurrent: currentSettings.maxConcurrent || currentSettings.concurrentDownloads || 5,
+  maxConcurrent: currentSettings.maxConcurrent || currentSettings.concurrentDownloads || 3,
   ffmpegPath: defaultFfmpeg
 });
 
@@ -221,13 +231,13 @@ app.on('before-quit', () => {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 580,
-    height: 420,
-    minWidth: 580,
-    minHeight: 420,
+    width: 1280,
+    height: 800,
+    minWidth: 960,
+    minHeight: 620,
     frame: false,
     center: true,
-    resizable: false,
+    resizable: true,
     icon: path.join(__dirname, 'FDR Download Drama.ico'),
     backgroundColor: '#0a0b10',
     show: false,
@@ -246,13 +256,41 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  // Fallback show
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  }, 1200);
+
+  // If renderer process crashes, reload automatically
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('[Window Guard] Renderer process gone:', details.reason);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+    }
   });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
+
+// When a second instance is launched, focus the existing main window instead of creating phantom background process
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();
@@ -355,7 +393,8 @@ ipcMain.handle('settings:save', (e, newSettings) => {
   }
   writeJson(settingsFile, currentSettings);
   if (newSettings.downloadDir) {
-    downloader.setDownloadDir(newSettings.downloadDir);
+    downloader.setDownloadDir(newSettings.downloadDir, true);
+    persistDownloads(true);
   }
   return true;
 });
@@ -491,7 +530,12 @@ ipcMain.handle('downloads:get-all', () => {
 // IPC Handler: Screen Preview Resolver (Resolves & caches preview episode for instant streaming)
 ipcMain.handle('preview:resolve', async (e, params) => {
   try {
-    const { vid, dramaId, episodeIndex, dramaTitle, existingPath } = params || {};
+    const { vid, dramaId, episodeIndex, dramaTitle, existingPath, url: directUrl } = params || {};
+
+    // 0. If direct HTTP stream is passed (.m3u8 or .mp4), return directly
+    if (directUrl && /^https?:\/\//i.test(directUrl)) {
+      return { success: true, url: directUrl, isStream: true };
+    }
 
     // 1. If an existing downloaded file path is passed and valid, return immediately
     if (existingPath && fs.existsSync(existingPath)) {
@@ -527,50 +571,51 @@ ipcMain.handle('preview:resolve', async (e, params) => {
       return { success: true, url: `file://${cacheFilePath.replace(/\\/g, '/')}`, isCached: true };
     }
 
-    // 4. Resolve & download preview via hongguo downloader
+    // 4. Resolve & download preview via pure Node.js VIP engine
     if (!vid) {
       return { success: false, error: 'មិនមាន Video ID សម្រាប់ Preview ភាគនេះឡើយ' };
     }
 
-    const resolver = downloader.resolveHongguoDownloader();
-    const tempPart = `${cacheFilePath}.part`;
+    try {
+      await downloadAndDecryptHongguo(vid, cacheFilePath, () => {});
+      if (fs.existsSync(cacheFilePath) && fs.statSync(cacheFilePath).size > 100000) {
+        return { success: true, url: `file://${cacheFilePath.replace(/\\/g, '/')}` };
+      }
+    } catch (vipErr) {
+      console.warn('[Preview] VIP engine preview warning:', vipErr.message);
+    }
 
-    await new Promise((resolve, reject) => {
-      const child = spawn(resolver.command, [...resolver.defaultArgs, vid, tempPart], {
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
-        windowsHide: true
-      });
-
-      const timer = setTimeout(() => {
-        try { child.kill('SIGKILL'); } catch (e) {}
-        reject(new Error('Preview timeout (30s)'));
-      }, 30000);
-
-      child.on('exit', (code) => {
-        clearTimeout(timer);
-        if (code === 0 && fs.existsSync(tempPart) && fs.statSync(tempPart).size > 100000) {
-          try {
-            if (fs.existsSync(cacheFilePath)) fs.unlinkSync(cacheFilePath);
-            fs.renameSync(tempPart, cacheFilePath);
-            resolve(true);
-          } catch (err) {
-            reject(err);
-          }
-        } else {
-          try { if (fs.existsSync(tempPart)) fs.unlinkSync(tempPart); } catch (e) {}
-          reject(new Error(`Failed to resolve preview video (code ${code})`));
-        }
-      });
-
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
-
-    return { success: true, url: `file://${cacheFilePath.replace(/\\/g, '/')}` };
+    return { success: false, error: 'មិនអាចបើកចាក់វីដេអូភាគនេះបានទេ' };
   } catch (err) {
     console.error('[Preview] Error resolving preview:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// IPC Handlers: Smart TV & DLNA Casting
+ipcMain.handle('tv:discover-devices', async () => {
+  try {
+    const list = await castingService.discover();
+    return { success: true, devices: list || [] };
+  } catch (err) {
+    return { success: false, error: err.message, devices: [] };
+  }
+});
+
+ipcMain.handle('tv:cast', async (e, { deviceId, filePath, title }) => {
+  try {
+    const res = await castingService.start(deviceId, { filePath, title });
+    return { success: true, name: res?.name };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('tv:stop-cast', async () => {
+  try {
+    await castingService.control('Stop');
+    return { success: true };
+  } catch (err) {
     return { success: false, error: err.message };
   }
 });
@@ -940,10 +985,11 @@ function formatBytes(bytes) {
   return `${mb.toFixed(1)} MB`;
 }
 
-// Native streaming download with real-time progress & speed
+// Native streaming download with real-time progress, speed, auto-resume & auto-retry
 ipcMain.handle('updater:download', async (event, opts = {}) => {
   let targetUrl = opts?.downloadUrl;
   let targetVer = opts?.version || 'latest';
+  let totalBytes = opts?.downloadSize || opts?.totalBytes || 0;
 
   // If no URL passed, fetch latest release asset URL from GitHub
   if (!targetUrl) {
@@ -957,7 +1003,10 @@ ipcMain.handle('updater:download', async (event, opts = {}) => {
         targetVer = (d.tag_name || '').replace(/^v/i, '').trim();
         const assets = Array.isArray(d.assets) ? d.assets : [];
         const setupAsset = assets.find(a => a.name.endsWith('.exe') && /setup/i.test(a.name)) || assets.find(a => a.name.endsWith('.exe'));
-        if (setupAsset) targetUrl = setupAsset.browser_download_url;
+        if (setupAsset) {
+          targetUrl = setupAsset.browser_download_url;
+          if (!totalBytes && setupAsset.size) totalBytes = setupAsset.size;
+        }
       }
     } catch (e) {}
   }
@@ -980,61 +1029,213 @@ ipcMain.handle('updater:download', async (event, opts = {}) => {
   const tempFilePath = path.join(app.getPath('temp'), `FDR-Drama-Setup-v${targetVer}.exe`);
   downloadedInstallerFile = tempFilePath;
 
-  try {
-    safeSend('updater:status', {
-      status: 'downloading',
-      percent: 0,
-      transferred: 0,
-      total: 0,
-      transferredFormatted: '0 MB',
-      totalFormatted: '...',
-      speedFormatted: '0 MB/s',
-      message: `⚡ កំពុងចាប់ផ្តើមទាញយក v${targetVer}...`
-    });
+  // Probe total size via HEAD request if not yet known
+  if (!totalBytes) {
+    try {
+      const probe = await fetch(targetUrl, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(6000),
+        headers: { 'User-Agent': 'FDR-Drama-DL-Pro-Downloader' }
+      });
+      const cl = probe.headers.get('content-length');
+      if (cl) totalBytes = parseInt(cl, 10);
+    } catch (e) {}
+  }
 
-    const resp = await fetch(targetUrl, {
-      signal: abortCtrl.signal,
-      headers: { 'User-Agent': 'FDR-Drama-DL-Pro-Downloader' }
-    });
+  // Inspect existing partially or fully downloaded file in %TEMP%
+  let existingBytes = 0;
+  if (fs.existsSync(tempFilePath)) {
+    try {
+      const stat = fs.statSync(tempFilePath);
+      existingBytes = stat.size;
 
-    if (!resp.ok) {
-      throw new Error(`HTTP Error ${resp.status}: ${resp.statusText}`);
-    }
-
-    const totalBytes = parseInt(resp.headers.get('content-length') || '0', 10);
-    const totalFormatted = formatBytes(totalBytes);
-
-    const fileStream = fs.createWriteStream(tempFilePath, { highWaterMark: 1024 * 1024 });
-    const reader = resp.body.getReader();
-
-    let downloadedBytes = 0;
-    let lastProgressTime = Date.now();
-    let bytesInWindow = 0;
-    let currentSpeed = '0 MB/s';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const canWrite = fileStream.write(value);
-      downloadedBytes += value.length;
-      bytesInWindow += value.length;
-
-      if (!canWrite) {
-        await new Promise((resolve) => fileStream.once('drain', resolve));
+      // If already fully downloaded (matches size and > 10MB)
+      if (totalBytes > 10 * 1024 * 1024 && existingBytes === totalBytes) {
+        safeSend('updater:status', {
+          status: 'downloaded',
+          version: targetVer,
+          installerPath: tempFilePath,
+          totalFormatted: formatBytes(totalBytes),
+          message: `🎉 បានទាញយកកំណែថ្មី v${targetVer} រួចរាល់!`
+        });
+        activeDownloadAbort = null;
+        return { success: true, installerPath: tempFilePath };
       }
 
-      const now = Date.now();
-      const elapsed = now - lastProgressTime;
-      if (elapsed >= 300) {
-        const speedBps = (bytesInWindow / (elapsed / 1000));
-        currentSpeed = speedBps >= 1024 * 1024
-          ? `${(speedBps / (1024 * 1024)).toFixed(1)} MB/s`
-          : `${Math.round(speedBps / 1024)} KB/s`;
-        bytesInWindow = 0;
-        lastProgressTime = now;
+      // If existing file is somehow larger than target, reset to avoid corruption
+      if (totalBytes > 0 && existingBytes > totalBytes) {
+        fs.unlinkSync(tempFilePath);
+        existingBytes = 0;
+      }
+    } catch (e) {
+      existingBytes = 0;
+    }
+  }
 
+  let downloadedBytes = existingBytes;
+  let totalFormatted = totalBytes > 0 ? formatBytes(totalBytes) : '...';
+
+  safeSend('updater:status', {
+    status: 'downloading',
+    percent: totalBytes > 0 ? Math.min(99, Math.round((downloadedBytes / totalBytes) * 100)) : 0,
+    transferred: downloadedBytes,
+    total: totalBytes,
+    transferredFormatted: formatBytes(downloadedBytes),
+    totalFormatted,
+    speedFormatted: '0 MB/s',
+    message: downloadedBytes > 0
+      ? `⚡ កំពុងបន្តទាញយក v${targetVer} ពី ${formatBytes(downloadedBytes)}...`
+      : `⚡ កំពុងចាប់ផ្តើមទាញយក v${targetVer}...`
+  });
+
+  const maxRetries = 12;
+  let retryCount = 0;
+
+  try {
+    while (totalBytes === 0 || downloadedBytes < totalBytes) {
+      if (abortCtrl.signal.aborted) {
+        throw new Error('Download aborted by user');
+      }
+
+      try {
+        const reqHeaders = {
+          'User-Agent': 'FDR-Drama-DL-Pro-Downloader',
+          'Accept-Encoding': 'identity'
+        };
+
+        // Resume from byte offset if we already have partial data
+        if (downloadedBytes > 0) {
+          reqHeaders['Range'] = `bytes=${downloadedBytes}-`;
+        }
+
+        const resp = await fetch(targetUrl, {
+          signal: abortCtrl.signal,
+          headers: reqHeaders,
+          redirect: 'follow'
+        });
+
+        if (!resp.ok && resp.status !== 206) {
+          throw new Error(`HTTP Error ${resp.status}: ${resp.statusText}`);
+        }
+
+        const isPartial = resp.status === 206;
+
+        // If server sent full 200 instead of 206 when we requested Range, reset downloadedBytes
+        if (!isPartial && downloadedBytes > 0) {
+          try { fs.unlinkSync(tempFilePath); } catch (e) {}
+          downloadedBytes = 0;
+        }
+
+        // Determine total size from headers if not known yet
+        if (!totalBytes) {
+          const contentRange = resp.headers.get('content-range');
+          if (contentRange) {
+            const m = contentRange.match(/\/(\d+)$/);
+            if (m) totalBytes = parseInt(m[1], 10);
+          } else {
+            const cl = resp.headers.get('content-length');
+            if (cl) totalBytes = parseInt(cl, 10);
+          }
+          totalFormatted = totalBytes > 0 ? formatBytes(totalBytes) : '...';
+        }
+
+        // Append to existing file if partial resume, or write fresh
+        const fileStream = fs.createWriteStream(tempFilePath, {
+          flags: downloadedBytes > 0 ? 'a' : 'w',
+          highWaterMark: 1024 * 1024
+        });
+
+        const reader = resp.body.getReader();
+        let lastProgressTime = Date.now();
+        let bytesInWindow = 0;
+        let currentSpeed = '0 MB/s';
+        let streamFinished = false;
+
+        try {
+          while (true) {
+            if (abortCtrl.signal.aborted) {
+              throw new Error('Download aborted by user');
+            }
+
+            // Inactivity watchdog: Auto-reconnect if no chunk received for 12s
+            let chunkTimer = null;
+            const chunkTimeoutPromise = new Promise((_, reject) => {
+              chunkTimer = setTimeout(() => reject(new Error('Network stalled (12s inactivity timeout)')), 12000);
+            });
+
+            const { done, value } = await Promise.race([
+              reader.read(),
+              chunkTimeoutPromise
+            ]).finally(() => {
+              if (chunkTimer) clearTimeout(chunkTimer);
+            });
+
+            if (done) {
+              streamFinished = true;
+              break;
+            }
+
+            const canWrite = fileStream.write(value);
+            downloadedBytes += value.length;
+            bytesInWindow += value.length;
+
+            if (!canWrite) {
+              await new Promise((resolve) => fileStream.once('drain', resolve));
+            }
+
+            const now = Date.now();
+            const elapsed = now - lastProgressTime;
+            if (elapsed >= 300) {
+              const speedBps = (bytesInWindow / (elapsed / 1000));
+              currentSpeed = speedBps >= 1024 * 1024
+                ? `${(speedBps / (1024 * 1024)).toFixed(1)} MB/s`
+                : `${Math.round(speedBps / 1024)} KB/s`;
+              bytesInWindow = 0;
+              lastProgressTime = now;
+
+              const percent = totalBytes > 0 ? Math.min(99, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
+              safeSend('updater:status', {
+                status: 'downloading',
+                percent,
+                transferred: downloadedBytes,
+                total: totalBytes,
+                transferredFormatted: formatBytes(downloadedBytes),
+                totalFormatted,
+                speedFormatted: currentSpeed,
+                message: `⚡ កំពុងទាញយក... ${percent}% (${formatBytes(downloadedBytes)} / ${totalFormatted})`
+              });
+            }
+          }
+        } finally {
+          fileStream.end();
+          await new Promise((resolve) => fileStream.on('finish', resolve));
+        }
+
+        // Check if finished
+        if (totalBytes > 0 && downloadedBytes >= totalBytes) {
+          break;
+        }
+
+        if (streamFinished && (totalBytes === 0 || downloadedBytes >= totalBytes)) {
+          break;
+        }
+
+        // If socket ended prematurely without reaching totalBytes, throw to trigger resume
+        throw new Error('Connection closed prematurely before completing file');
+
+      } catch (streamErr) {
+        if (abortCtrl.signal.aborted) {
+          throw streamErr;
+        }
+
+        retryCount++;
+        if (retryCount > maxRetries) {
+          throw new Error(`បរាជ័យក្នុងការទាញយកបន្ទាប់ពីព្យាយាម ${maxRetries} ដង (${streamErr.message})`);
+        }
+
+        const waitSec = Math.min(retryCount * 2, 6);
         const percent = totalBytes > 0 ? Math.min(99, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
+
         safeSend('updater:status', {
           status: 'downloading',
           percent,
@@ -1042,14 +1243,13 @@ ipcMain.handle('updater:download', async (event, opts = {}) => {
           total: totalBytes,
           transferredFormatted: formatBytes(downloadedBytes),
           totalFormatted,
-          speedFormatted: currentSpeed,
-          message: `⚡ កំពុងទាញយក... ${percent}% (${formatBytes(downloadedBytes)} / ${totalFormatted})`
+          speedFormatted: '0 MB/s',
+          message: `🔄 បណ្ដាញរអាក់រអួល (${percent}%). កំពុងភ្ជាប់បន្តដោយស្វ័យប្រវត្តិ... (${retryCount}/${maxRetries})`
         });
+
+        await new Promise((r) => setTimeout(r, waitSec * 1000));
       }
     }
-
-    fileStream.end();
-    await new Promise((resolve) => fileStream.on('finish', resolve));
 
     activeDownloadAbort = null;
 
@@ -1057,7 +1257,7 @@ ipcMain.handle('updater:download', async (event, opts = {}) => {
       status: 'downloaded',
       version: targetVer,
       installerPath: tempFilePath,
-      totalFormatted,
+      totalFormatted: formatBytes(downloadedBytes),
       message: `🎉 បានទាញយកកំណែថ្មី v${targetVer} រួចរាល់!`
     });
 
@@ -1084,18 +1284,23 @@ ipcMain.handle('updater:install', () => {
   if (downloadedInstallerFile && fs.existsSync(downloadedInstallerFile)) {
     try {
       const { spawn } = require('child_process');
-      spawn(downloadedInstallerFile, [], { detached: true, stdio: 'ignore' }).unref();
+      // Execute silent background installer with automatic relaunch (/S --force-run --updated)
+      const child = spawn(downloadedInstallerFile, ['/S', '--force-run', '--updated'], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
       setTimeout(() => {
         app.quit();
-      }, 400);
+      }, 500);
       return { success: true };
     } catch (e) {
-      console.error('Failed to spawn installer:', e);
+      console.error('Failed to spawn silent installer:', e);
     }
   }
 
   try {
-    autoUpdater.quitAndInstall(false, true);
+    autoUpdater.quitAndInstall(true, true);
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };

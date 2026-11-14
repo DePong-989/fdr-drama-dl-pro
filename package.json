@@ -1,6 +1,6 @@
 {
   "name": "fdr-drama-dl-pro",
-  "version": "2.0.4",
+  "version": "2.0.8",
   "description": "FDR Drama DL Pro - Luxury VIP Short Drama Downloader with Multi-CDN Aggregation",
   "main": "main.js",
   "scripts": {
@@ -47,7 +47,7 @@
         "repo": "fdr-drama-dl-pro"
       }
     ],
-    "compression": "normal",
+    "compression": "maximum",
     "win": {
       "target": [
         {
@@ -67,6 +67,9 @@
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
+      "packElevateHelper": false,
+      "differentialPackage": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,

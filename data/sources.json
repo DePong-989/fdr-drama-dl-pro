@@ -81,5 +81,29 @@
     "categories": [
       { "id": 0, "name": "全库资源 (All)" }
     ]
+  },
+  {
+    "id": "jszy-dramas",
+    "name": "⚡ 极速高清短剧库 (JSZY Full Dramas)",
+    "api": "https://jszyapi.com/api.php/provide/vod",
+    "type": "maccms_v10",
+    "defaultTypeId": 0,
+    "enabled": true,
+    "description": "High-speed JSZY short dramas & series API with multi-CDN streams",
+    "categories": [
+      { "id": 0, "name": "全库资源 (All)" }
+    ]
+  },
+  {
+    "id": "guangsu-dramas",
+    "name": "🚀 光速短剧资源库 (Guangsu VIP)",
+    "api": "https://api.guangsuapi.com/api.php/provide/vod",
+    "type": "maccms_v10",
+    "defaultTypeId": 0,
+    "enabled": true,
+    "description": "Guangsu fast CDN short dramas & full-episode collections",
+    "categories": [
+      { "id": 0, "name": "全库资源 (All)" }
+    ]
   }
 ]

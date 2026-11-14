@@ -29,7 +29,52 @@ for p in search_dirs:
             sys.path.insert(0, s)
 
 import importlib
+import requests
 parser_module = importlib.import_module("1")
+
+
+def download_via_hongguo_web(vid: str, out_file: Path) -> bool:
+    """Fallback downloader using hongguoduanju.com protected/public video endpoints."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://hongguoduanju.com/",
+    }
+    candidate_urls = []
+    try:
+        r = requests.post(
+            "https://hongguoduanju.com/api/video/protected/fallback-play-info",
+            json={"item_id": str(vid).strip()},
+            headers=headers,
+            timeout=10,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            for k in ("main_url", "backup_url_1"):
+                u = data.get(k) or (data.get("data") or {}).get(k)
+                if u and u.startswith("http"):
+                    candidate_urls.append(u)
+    except Exception:
+        pass
+
+    candidate_urls.append(f"https://hongguoduanju.com/video/public/{str(vid).strip()}/360p.mp4")
+
+    for url in candidate_urls:
+        try:
+            with requests.get(url, headers=headers, stream=True, timeout=20) as resp:
+                if resp.status_code == 200:
+                    tmp_path = out_file.with_suffix(".web.tmp")
+                    with open(tmp_path, "wb") as f:
+                        for chunk in resp.iter_content(chunk_size=262144):
+                            if chunk:
+                                f.write(chunk)
+                    if tmp_path.exists() and tmp_path.stat().st_size >= 100000:
+                        shutil.move(str(tmp_path), str(out_file))
+                        return True
+                    tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+    return False
+
 
 def download_hongguo_vid(vid: str, output_path: str) -> bool:
     out_file = Path(output_path).resolve()
@@ -41,7 +86,7 @@ def download_hongguo_vid(vid: str, output_path: str) -> bool:
     last_err = ""
     for attempt in range(2):
         try:
-            result = parser_module.resolve_video_url(str(vid).strip(), max_retries=2)
+            result = parser_module.resolve_video_url(str(vid).strip(), max_retries=1)
             temp_file = result.get("url") if isinstance(result, dict) else None
             if temp_file and os.path.isfile(temp_file):
                 temp_path = Path(temp_file).resolve()
@@ -60,7 +105,11 @@ def download_hongguo_vid(vid: str, output_path: str) -> bool:
                 last_err = "Output video file not produced"
         except Exception as exc:
             last_err = str(exc)
-            time.sleep(0.3)
+            time.sleep(0.2)
+
+    if download_via_hongguo_web(vid, out_file):
+        print("SUCCESS")
+        return True
 
     print(f"ERROR:{last_err}")
     return False

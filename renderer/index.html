@@ -13,7 +13,7 @@
 <body>
   <div class="cinema-app-wrapper">
     <!-- ================= CINEMA INTRO POWER SYSTEM ================= -->
-    <div class="cinema-intro-overlay" id="cinema-intro-overlay">
+    <div class="cinema-intro-overlay" id="cinema-intro-overlay" style="display: none;">
       <div class="intro-ambient-glow intro-glow-gold"></div>
       <div class="intro-ambient-glow intro-glow-blue"></div>
       <div class="intro-grid-stars"></div>
@@ -132,6 +132,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="3"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
           <span data-i18n="navCatalog">រឿងភាគ (Dramas)</span>
         </button>
+        <button class="dock-tab" data-view="tv" id="tab-nav-tv">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+          <span data-i18n="navTv">ទូរទស្សន៍ (TV)</span>
+        </button>
         <button class="dock-tab" data-view="favorites" id="tab-nav-favorites">
           <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span>ពេញចិត្ត (Favorites)</span>
@@ -203,23 +207,33 @@
       <section class="cinema-view active" id="view-catalog">
         <!-- Modern Easy-to-Use VIP Category Hub (No Horizontal Scrollbar) -->
         <div class="cinema-category-panel">
-          <!-- Row 1: Content Formats & Top Lists -->
+          <!-- Row 1: Video Size & Aspect Ratio (16:9 vs 9:16) -->
           <div class="cat-group-row">
             <div class="cat-group-header">
-              <span class="cat-group-badge">🎯 ទម្រង់រឿង</span>
+              <span class="cat-group-badge" style="color: #60a5fa; border-color: rgba(96,165,250,0.35); background: rgba(96,165,250,0.12);">📐 ទំហំវីដេអូ (Size)</span>
+            </div>
+            <div class="cat-pills-wrap" id="ratio-pills-wrap">
+              <button class="cat-pill active" data-ratio="all">🌟 គ្រប់ទំហំ (All Size)</button>
+              <button class="cat-pill" data-ratio="16:9" style="font-weight: 800; border-color: rgba(96,165,250,0.3);">🖥️ 16:9 ទទឹង (横屏)</button>
+              <button class="cat-pill" data-ratio="9:16" style="font-weight: 800; border-color: rgba(167,139,250,0.3);">📱 9:16 បញ្ឈរ (竖屏)</button>
+            </div>
+          </div>
+
+          <!-- Row 2: Cast & Production (AI vs Human Actors) -->
+          <div class="cat-group-row">
+            <div class="cat-group-header">
+              <span class="cat-group-badge">🎭 ការផលិត (Cast)</span>
             </div>
             <div class="cat-pills-wrap" id="format-pills-wrap">
-              <button class="cat-pill active" data-format="all">🌟 ទាំងអស់ (All VIP)</button>
-              <button class="cat-pill" data-format="new-releases">🆕 ទើបចេញថ្មី (៣ថ្ងៃចុងក្រោយ)</button>
+              <button class="cat-pill active" data-format="all">🌟 ទាំងអស់</button>
               <button class="cat-pill" data-format="real-drama">🎭 មនុស្សសម្តែងសុទ្ធ (真人剧)</button>
               <button class="cat-pill" data-format="comic">🤖 AI & គំនូរជីវចលសុទ្ធ (漫剧/AI)</button>
-              <button class="cat-pill" data-format="landscape">🖥️ 16:9 ទទឹង (横屏)</button>
-              <button class="cat-pill" data-format="vertical">📱 9:16 បញ្ឈរ (竖屏)</button>
+              <button class="cat-pill" data-format="new-releases">🆕 ទើបចេញថ្មី (៣ថ្ងៃចុងក្រោយ)</button>
               <button class="cat-pill" data-format="trending">🔥 កំពុងពេញនិយម (Trending)</button>
             </div>
           </div>
 
-          <!-- Row 2: Popular Story Genres -->
+          <!-- Row 3: Popular Story Genres -->
           <div class="cat-group-row">
             <div class="cat-group-header">
               <span class="cat-group-badge">🏷️ ប្រភេទសាច់រឿង</span>
@@ -283,6 +297,171 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
             <span>ឡើងលើវិញ (Top)</span>
           </button>
+        </div>
+      </section>
+
+      <!-- VIEW: TV THEATER & SMART TV LOUNGE -->
+      <section class="cinema-view" id="view-tv">
+        <div class="tv-lounge-container">
+          <!-- Top Hero Stage: TV Cinema Screen + Instant Action Hub -->
+          <div class="tv-hero-stage">
+            <!-- Left: Cinema TV Video Screen -->
+            <div class="tv-player-card">
+              <div class="tv-screen-bezel">
+                <div class="tv-screen-top-indicator">
+                  <span class="tv-live-pill"><span class="tv-pulse-dot"></span> 📺 TV THEATER</span>
+                  <div class="tv-tiktok-mode-pill" id="tv-tiktok-mode-pill" title="របៀបទស្សនាបន្តបន្ទាប់ស្វ័យប្រវត្តិកុំឱ្យទាក់ (TikTok Auto-Scroll Mode)">
+                    <span class="tiktok-pulse-icon">⚡</span>
+                    <span>TikTok Mode: On</span>
+                  </div>
+                  <span class="tv-quality-tag" id="tv-quality-tag">1080P FULL HD • DOLBY SOUND</span>
+                </div>
+                
+                <!-- Video Element -->
+                <div class="tv-video-wrapper" id="tv-video-wrapper">
+                  <video id="tv-video" controls autoplay playsinline preload="auto"></video>
+                  
+                  <!-- TikTok Floating Next/Prev Overlays -->
+                  <div class="tv-tiktok-nav-controls">
+                    <button class="btn-tiktok-nav btn-tiktok-prev" id="btn-tiktok-prev" title="រឿងមុន (Previous Drama - Key ↑)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                      <span>រឿងមុន</span>
+                    </button>
+                    <button class="btn-tiktok-nav btn-tiktok-next" id="btn-tiktok-next" title="រឿងបន្ទាប់ (Next Drama - Key ↓)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                      <span>រឿងបន្ទាប់</span>
+                    </button>
+                  </div>
+                  
+                  <!-- Empty State Placeholder when no video is playing yet -->
+                  <div class="tv-screen-empty-placeholder" id="tv-screen-empty">
+                    <div class="tv-static-lines"></div>
+                    <div class="tv-empty-icon">📺</div>
+                    <h3 class="tv-empty-title">ជ្រើសរើសរឿងណាមួយខាងក្រោមដើម្បីចាក់មើល</h3>
+                    <p class="tv-empty-sub">ទស្សនារឿងភាគច្បាស់ 1080P ពេញចិត្តរឿងណា ចុច "Add to Download" បានភ្លាមៗ!</p>
+                  </div>
+                </div>
+                
+                <div class="tv-screen-bottom-bar">
+                  <span class="tv-ep-playing-name" id="tv-ep-playing-name">មិនទាន់ចាក់រឿងនៅឡើយ</span>
+                  <div class="tv-screen-tools">
+                    <button class="tv-screen-tool-btn" id="btn-tv-fullscreen" title="ពេញអេក្រង់ (Full Screen)">⛶</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Drama Control & One-Click Download Hub -->
+            <div class="tv-drama-sidebar">
+              <!-- Drama Hero Meta Card -->
+              <div class="tv-meta-card">
+                <div class="tv-meta-poster-wrap">
+                  <img id="tv-hero-poster" src="logo_preview.png" alt="Drama Poster" class="tv-hero-poster">
+                  <span class="tv-poster-ep-badge" id="tv-hero-ep-badge">0 ភាគ</span>
+                </div>
+                <div class="tv-meta-details">
+                  <div class="tv-gold-label">👑 TV PREVIEW & STREAM</div>
+                  <h2 class="tv-hero-title" id="tv-hero-title">សូមជ្រើសរើសភាពយន្តភាគ</h2>
+                  <div class="tv-hero-tags" id="tv-hero-tags">
+                    <span class="tv-tag-pill">🔥 ពេញនិយម</span>
+                    <span class="tv-tag-pill">1080P VIP</span>
+                  </div>
+                  <p class="tv-hero-synopsis" id="tv-hero-synopsis">ចុចលើរឿងណាមួយខាងក្រោម ដើម្បីចាក់មើលភ្លាមៗលើ TV Screen នេះ។</p>
+                </div>
+              </div>
+
+              <!-- HUGE ONE-CLICK DOWNLOAD ACTIONS -->
+              <div class="tv-download-actions-card">
+                <div class="tv-actions-label">⚡ ទាញយកភាពយន្តនេះ (Instant Download):</div>
+                <div class="tv-actions-buttons-grid">
+                  <!-- Button 1: Add All Episodes to Download -->
+                  <button class="btn-tv-action btn-tv-download-all" id="btn-tv-download-all" title="ចុចដើម្បីទាញយកគ្រប់ភាគទាំងអស់នៃរឿងនេះ">
+                    <span class="btn-tv-icon">📥</span>
+                    <div class="btn-tv-text-wrap">
+                      <span class="btn-tv-main-text">Add គ្រប់ភាគទាំងអស់</span>
+                      <span class="btn-tv-sub-text" id="tv-download-all-sub">Download All Episodes</span>
+                    </div>
+                  </button>
+
+                  <!-- Button 2: Download Current Episode -->
+                  <button class="btn-tv-action btn-tv-download-current" id="btn-tv-download-current" title="ទាញយកតែភាគដែលកំពុងចាក់មើលនេះ">
+                    <span class="btn-tv-icon">⚡</span>
+                    <div class="btn-tv-text-wrap">
+                      <span class="btn-tv-main-text">Add ភាគនេះ</span>
+                      <span class="btn-tv-sub-text" id="tv-download-curr-sub">Download Current Ep</span>
+                    </div>
+                  </button>
+
+                  <!-- Button 3: Add to Favorite -->
+                  <button class="btn-tv-action btn-tv-favorite" id="btn-tv-favorite" title="រក្សាទុកក្នុងបញ្ជីពេញចិត្ត">
+                    <span class="btn-tv-icon">⭐</span>
+                    <div class="btn-tv-text-wrap">
+                      <span class="btn-tv-main-text">ពេញចិត្ត</span>
+                      <span class="btn-tv-sub-text">Add to Favorites</span>
+                    </div>
+                  </button>
+
+                  <!-- Button 4: Cast to Smart TV -->
+                  <button class="btn-tv-action btn-tv-cast" id="btn-tv-cast" title="បញ្ជូនទៅចាក់លើទូរទស្សន៍ Smart TV ក្នុងផ្ទះ">
+                    <span class="btn-tv-icon">📺</span>
+                    <div class="btn-tv-text-wrap">
+                      <span class="btn-tv-main-text">Cast to TV</span>
+                      <span class="btn-tv-sub-text">បញ្ជូនទៅ Smart TV</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Episodes Selector List for this Drama -->
+              <div class="tv-episodes-shelf">
+                <div class="tv-shelf-header">
+                  <span class="tv-shelf-title">📋 ភាគទាំងអស់ (Episodes Selector):</span>
+                  <span class="tv-shelf-count" id="tv-shelf-count">0 ភាគ</span>
+                </div>
+                <div class="tv-episodes-chips-wrap" id="tv-episodes-chips">
+                  <div style="color:var(--text-muted); font-size:12px; padding:10px;">ជ្រើសរើសរឿងដើម្បីបង្ហាញភាគ...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Stage: TV Channels / Browse Dramas Grid -->
+          <div class="tv-browse-section">
+            <div class="tv-browse-header">
+              <div class="tv-browse-title-group">
+                <h3 class="tv-browse-heading">📺 ប៉ុស្តិ៍ & ភាពយន្តភាគទូរទស្សន៍ (TV Channels & Dramas)</h3>
+                <span class="tv-browse-sub">ចុចលើរឿងដើម្បីបើកមើលលើ TV Screen ខាងលើភ្លាមៗ</span>
+              </div>
+
+              <!-- TV Search & Filters -->
+              <div class="tv-filter-row">
+                <div class="tv-search-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="search-ico"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" id="input-tv-search" placeholder="ស្វែងរករឿងចាក់លើ TV...">
+                  <button id="btn-tv-search-go" class="btn-cinema-search-go">ស្វែងរក</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TV Category Tabs -->
+            <div class="tv-categories-bar" id="tv-categories-bar">
+              <button class="cat-pill active" data-tv-cat="trending">🔥 កំពុងពេញនិយម (Trending)</button>
+              <button class="cat-pill" data-tv-cat="new-releases">🆕 ទើបចេញថ្មីៗ (New Releases)</button>
+              <button class="cat-pill" data-tv-cat="real-drama">🎭 មនុស្សសម្តែងសុទ្ធ (Human)</button>
+              <button class="cat-pill" data-tv-cat="comic">🤖 AI & គំនូរជីវចល (AI/Comic)</button>
+              <button class="cat-pill" data-tv-cat="tv-series">🎬 រឿងភាគវែង (TV Series)</button>
+              <button class="cat-pill" data-tv-cat="16:9">🖥️ 16:9 ទទឹង (Widescreen)</button>
+              <button class="cat-pill" data-tv-cat="vip-1080p">👑 Hongguo VIP 1080P</button>
+              <button class="cat-pill" data-tv-cat="ancient">🏮 បុរាណ & សិល្ប៍</button>
+              <button class="cat-pill" data-tv-cat="modern">💼 សម័យ & សេដ្ឋី</button>
+              <button class="cat-pill" data-tv-cat="comedy">😂 កំប្លែង & ស្នេហា</button>
+            </div>
+
+            <!-- TV Dramas Grid -->
+            <div class="cinema-grid" id="tv-dramas-grid">
+              <!-- Loaded dynamically -->
+            </div>
+          </div>
         </div>
       </section>
 
@@ -450,7 +629,7 @@
 
           <div class="setting-row">
             <div>
-              <div class="setting-title">🔄 Version កម្មវិធី: <strong id="setting-app-version" style="color:var(--gold-400); margin-left:6px;">v2.0.3</strong></div>
+              <div class="setting-title">🔄 Version កម្មវិធី: <strong id="setting-app-version" style="color:var(--gold-400); margin-left:6px;">v2.0.7</strong></div>
             </div>
             <div class="setting-ctrl" style="display:flex; align-items:center; gap:8px;">
               <button type="button" class="btn-tool-gold" id="btn-trigger-update" style="display:none; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border-color:#34d399; font-weight:800; padding:6px 14px; border-radius:6px; box-shadow:0 0 15px rgba(16,185,129,0.35); cursor:pointer;">
@@ -521,6 +700,9 @@
             </div>
 
             <div class="toolbar-right">
+              <button class="btn-tool-pill btn-watch-tv" id="btn-modal-watch-tv" title="បើកចាក់ទស្សនាលើ TV Screen ធំ">
+                📺 ចាក់លើ TV
+              </button>
               <button class="btn-tool-gold-solid btn-all-seasons" id="btn-download-all-seasons" style="display: none;" title="បន្ថែមគ្រប់ភាគនៃគ្រប់រដូវកាលទាំងអស់ទៅបញ្ជី Download">
                 👑 បន្ថែមគ្រប់រដូវកាល
               </button>
@@ -580,6 +762,9 @@
         <div class="player-header-bar">
           <span class="player-title" id="player-title-display">Player</span>
           <div class="player-controls-top">
+            <button class="btn-player-download-now" id="btn-player-download-now" title="ចុចដើម្បីទាញយករឿងនេះភ្លាមៗ">
+              📥 Add to Download
+            </button>
             <div class="player-ep-nav-bar" id="player-ep-nav-bar" style="display:none;">
               <button class="btn-player-nav" id="btn-player-prev-ep" title="ភាគមុន (Alt + ←)">⏮️ ភាគមុន</button>
               <span class="player-ep-indicator" id="player-ep-indicator">ភាគ 01</span>

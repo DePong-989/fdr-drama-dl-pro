@@ -15,6 +15,8 @@ class DramaApi {
     this.catalogLoaded = false;
     this.cachedHomeSections = null;
     this.cacheTimestamp = 0;
+    this.hongguoCookie = '';
+    this.hongguoCookieTime = 0;
     this.loadCatalog();
   }
 
@@ -176,45 +178,64 @@ class DramaApi {
     return aliasMap[raw] || text;
   }
 
-  // 4. Helper: Format Local Catalog item to unified drama card
-  formatCatalogCard(item) {
-    const epCount = item.episodesCount || (item.vidList ? item.vidList.length : 80);
-    const tagsArr = Array.isArray(item.tags) ? item.tags : [];
-    const catStr = tagsArr.length > 0 ? tagsArr.slice(0, 3).join(' / ') : (item.category || 'Hongguo VIP');
+  // 4. Helper: Parse all episodes from a MacCMS VOD object (picks the stream group with the most episodes)
+  parseMacCmsEpisodes(v) {
+    if (!v) return [];
+    const delimiter = String.fromCharCode(36, 36, 36); // "$$$"
+    const candidates = [];
 
-    return {
-      id: String(item.id),
-      title: item.title,
-      cover: item.cover || '',
-      category: catStr,
-      episodesCount: epCount,
-      remarks: `${epCount} ភាគ`,
-      totalEp: `✅ ${epCount} ភាគ`,
-      subTitle: item.isAi ? `AI គំនូរជីវចល • ${epCount} ភាគ` : `Hongguo VIP • ${epCount} ភាគ`,
-      isAi: !!item.isAi,
-      isComedy: !!item.isComedy,
-      isTrending: true,
-      intro: item.intro || `${item.title} - ភាពយន្តភាគខ្លី Hongguo Official`,
-      vidList: item.vidList || [],
-      isOfficialHongguo: true
-    };
+    if (v.vod_down_url && v.vod_down_url.includes('.mp4')) {
+      candidates.push(...v.vod_down_url.split(delimiter));
+    }
+    if (v.vod_play_url) {
+      candidates.push(...v.vod_play_url.split(delimiter));
+    }
+
+    let bestList = [];
+    for (const part of candidates) {
+      if (!part) continue;
+      const items = (part.split('#') || []).map((seg, i) => {
+        const s = seg.split('$');
+        let epTitle = s[0] ? s[0].trim() : `第${i + 1}集`;
+        let epUrl = s[1] ? s[1].trim() : '';
+        if (!epUrl && s[0] && s[0].startsWith('http')) {
+          epUrl = s[0].trim();
+        }
+        const epNum = i + 1;
+        const pad = epNum < 10 ? `0${epNum}` : `${epNum}`;
+        return {
+          index: epNum,
+          title: `ភាគ ${pad}`,
+          rawTitle: epTitle,
+          vid: '',
+          url: epUrl
+        };
+      }).filter(e => e.url && /^https?:\/\//i.test(e.url) && (e.url.includes('.m3u8') || e.url.includes('.mp4') || e.url.includes('mime_type=video_mp4')));
+
+      // Priority ranking: prefer candidate list with more episodes; if equal, prefer direct 1080P .mp4 over .m3u8!
+      const currentScore = items.length * 10 + (items[0]?.url?.includes('.mp4') ? 5 : 0);
+      const bestScore = bestList.length * 10 + (bestList[0]?.url?.includes('.mp4') ? 5 : 0);
+      if (currentScore > bestScore) {
+        bestList = items;
+      }
+    }
+    return bestList;
   }
 
   // 5. Helper: Format Online MacCMS vod item to unified drama card
   formatMacCmsCard(v, sourcePrefix = 'lzi') {
     const sId = `maccms_${sourcePrefix}_${v.vod_id}`;
-    let epCount = 80;
+    const parsedEpisodes = this.parseMacCmsEpisodes(v);
+    let epCount = parsedEpisodes.length;
 
-    // Extract episode count from vod_remarks (e.g. "已完结80集", "全80集", "80集")
-    const m = (v.vod_remarks || '').match(/(\d+)/);
-    if (m) {
-      epCount = parseInt(m[1], 10);
-    } else if (v.vod_play_url) {
-      const delimiter = String.fromCharCode(36, 36, 36); // "$$$"
-      const parts = v.vod_play_url.split(delimiter);
-      const chosenPart = parts.find(p => p.includes('.m3u8')) || parts[0];
-      const count = (chosenPart.split('#') || []).filter(Boolean).length;
-      if (count > 0) epCount = count;
+    if (epCount <= 1) {
+      // Only fall back to vod_remarks if it explicitly says "X集" or "第X集" (never match "1080P")
+      const m = (v.vod_remarks || '').match(/(\d+)\s*[集期话]/);
+      if (m) {
+        epCount = parseInt(m[1], 10);
+      } else if (epCount === 0) {
+        epCount = 80;
+      }
     }
 
     const isAi = (v.type_name || '').includes('漫') || (v.vod_name || '').includes('漫') || (v.vod_name || '').includes('动画');
@@ -226,6 +247,7 @@ class DramaApi {
       cover: v.vod_pic || '',
       category: v.type_name || '短剧 VIP',
       episodesCount: epCount,
+      actualPlayableCount: parsedEpisodes.length,
       remarks: `${epCount} ភាគ`,
       totalEp: `✅ ${epCount} ភាគ`,
       subTitle: `Hongguo VIP • ${epCount} ភាគ`,
@@ -296,33 +318,162 @@ class DramaApi {
     return matches.map(m => m.card);
   }
 
+  // Helper: Retrieve valid session cookie from Hongguo
+  async getHongguoCookie() {
+    const now = Date.now();
+    if (this.hongguoCookie && (now - this.hongguoCookieTime < 3600000)) {
+      return this.hongguoCookie;
+    }
+    try {
+      const res = await fetch('https://hongguoduanju.com/search', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        signal: AbortSignal.timeout(5000)
+      });
+      const cookie = res.headers.get('set-cookie');
+      if (cookie) {
+        this.hongguoCookie = cookie;
+        this.hongguoCookieTime = now;
+        return cookie;
+      }
+    } catch (e) {}
+    return this.hongguoCookie || '';
+  }
+
+  // Search Live Hongguo Official API by Keyword (real-time official ByteDance duanju database)
+  async searchHongguoOnline(queryText) {
+    if (!queryText || !queryText.trim()) return [];
+    try {
+      const cookie = await this.getHongguoCookie();
+      const url = `https://hongguoduanju.com/api/search/result?query=${encodeURIComponent(queryText.trim())}`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://hongguoduanju.com/search',
+          'Cookie': cookie
+        },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      const list = Array.isArray(data.searchList) ? data.searchList : [];
+      return list.map(item => {
+        const vd = item.video_data || {};
+        const sId = String(vd.series_id || item.keyword);
+        const title = vd.series_title || item.name;
+        const cover = vd.series_cover || '';
+        const catList = Array.isArray(vd.category_list) ? vd.category_list.map(c => c.name) : [];
+        const epCount = vd.episode_cnt || 80;
+        const isAi = catList.some(c => /漫剧|ai|动画|动漫/i.test(c)) || /漫剧|ai/i.test(title);
+        const isComedy = catList.some(c => /喜|搞笑/i.test(c)) || /喜|搞笑/i.test(title);
+        const is16_9 = /横屏|横版|16[:\-]9|16比9|电影|院线|宽屏/i.test(title + ' ' + catList.join(' '));
+
+        return {
+          id: sId,
+          title,
+          cover,
+          category: catList.length > 0 ? catList.join(' / ') : 'Hongguo Official VIP',
+          episodesCount: epCount,
+          remarks: `${epCount} ភាគ`,
+          totalEp: `✅ ${epCount} ភាគ`,
+          subTitle: `Hongguo Official • ${epCount} ភាគ`,
+          isAi,
+          isComedy,
+          isTrending: true,
+          intro: vd.series_intro || `${title} - ភាពយន្តភាគខ្លី Hongguo Official VIP`,
+          vidList: Array.isArray(vd.vid_list) ? vd.vid_list : [],
+          isOfficialHongguo: true,
+          isLandscape: is16_9,
+          ratio: is16_9 ? '16:9' : '9:16'
+        };
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
   // 7. Parallel Search over Online MacCMS Sources (50,000+ Dramas)
   async searchMacCms(queryText) {
-    const query = this.mapKeyword(queryText);
-    const endpoints = [
-      { name: 'lzi', url: `https://cj.lziapi.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(query)}` },
-      { name: 'ffzy', url: `https://cj.ffzyapi.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(query)}` }
-    ];
+    const rawQ = String(queryText || '').trim();
+    if (!rawQ) return [];
+    const query = this.mapKeyword(rawQ);
+    const normQuery = query.toLowerCase().replace(/[\s\-_，。！？：:,!?""''《》【】()（）]/g, '');
 
-    const results = await Promise.allSettled(
-      endpoints.map(async ep => {
-        const res = await fetch(ep.url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-          signal: AbortSignal.timeout(8000)
-        });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return (data.list || []).map(v => this.formatMacCmsCard(v, ep.name));
-      })
-    );
+    const fetchFromProviders = async (searchWord) => {
+      const endpoints = [
+        { name: 'ffzy', url: `https://cj.ffzyapi.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(searchWord)}` },
+        { name: 'lzi', url: `https://cj.lziapi.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(searchWord)}` },
+        { name: 'bfzy', url: `https://bfzyapi.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(searchWord)}` },
+        { name: 'subo', url: `https://subocaiji.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(searchWord)}` },
+        { name: 'jinying', url: `https://jinyingzy.com/provide/vod/from/jinying/at/json?ac=videolist&wd=${encodeURIComponent(searchWord)}` },
+        { name: 'jszy', url: `https://jszyapi.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(searchWord)}` },
+        { name: 'guangsu', url: `https://api.guangsuapi.com/api.php/provide/vod?ac=videolist&wd=${encodeURIComponent(searchWord)}` }
+      ];
+      // Also include any custom enabled maccms_v10 sources from data/sources.json
+      try {
+        const srcPath = path.join(this.dataDir, 'sources.json');
+        if (fs.existsSync(srcPath)) {
+          const customSources = JSON.parse(fs.readFileSync(srcPath, 'utf8'));
+          if (Array.isArray(customSources)) {
+            for (const s of customSources) {
+              if (s.enabled !== false && s.type === 'maccms_v10' && s.api && /^https?:\/\//i.test(s.api)) {
+                const sep = s.api.includes('?') ? '&' : '?';
+                const fullUrl = `${s.api}${sep}ac=videolist&wd=${encodeURIComponent(searchWord)}`;
+                if (!endpoints.some(e => fullUrl.startsWith(e.url.split('?')[0]))) {
+                  endpoints.push({ name: s.id || 'custom', url: fullUrl });
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
 
-    const items = [];
-    results.forEach(r => {
-      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-        items.push(...r.value);
-      }
+      const results = await Promise.allSettled(
+        endpoints.map(async ep => {
+          const res = await fetch(ep.url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+            signal: AbortSignal.timeout(7000)
+          });
+          if (!res.ok) return [];
+          const data = await res.json();
+          return (data.list || []).map(v => this.formatMacCmsCard(v, ep.name));
+        })
+      );
+
+      const list = [];
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+          list.push(...r.value);
+        }
+      });
+      return list;
+    };
+
+    let items = await fetchFromProviders(query);
+
+    // If full title has punctuation/subtitles and returned no multi-episode results, also search core prefix
+    const coreMatch = query.split(/[：:，,\s（(]/)[0].trim();
+    if (items.filter(x => (x.actualPlayableCount || 0) >= 5).length === 0 && coreMatch && coreMatch.length >= 2 && coreMatch !== query) {
+      const extra = await fetchFromProviders(coreMatch);
+      items.push(...extra);
+    }
+
+    // Score and sort so Short Dramas (短剧), fast CDNs (ffzy/lzi), and complete multi-episode streams rank first
+    const scored = items.map(card => {
+      const normTitle = (card.title || '').toLowerCase().replace(/[\s\-_，。！？：:,!?""''《》【】()（）]/g, '');
+      const typeName = card.category || '';
+      let score = 0;
+      if (/短剧|爽文|爽剧|言情|总裁|都市|古装|穿越|漫剧|重生|逆袭/.test(typeName)) score += 1000;
+      if (normTitle === normQuery) score += 800;
+      else if (normQuery && (normTitle.includes(normQuery) || normQuery.includes(normTitle))) score += 400;
+      if (card.sourcePrefix === 'ffzy' || card.sourcePrefix === 'lzi') score += 150;
+      score += Math.min(500, (card.actualPlayableCount || 0) * 5);
+      return { score, card };
     });
-    return items;
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.map(s => s.card);
   }
 
   // 8. Search Official Hongguo Dramas by Keyword or Direct Link
@@ -392,38 +543,56 @@ class DramaApi {
       // 1. Search in local 14,116+ official Hongguo catalog (Instant, 2-5ms)
       const localMatches = this.searchLocalCatalog(queryText);
 
-      // 2. In parallel, search online MacCMS sources (50,000+ Chinese & Hongguo Short Dramas)
-      let macMatches = [];
-      try {
-        macMatches = await this.searchMacCms(queryText);
-      } catch (err) {
-        console.warn('[DramaApi] Online MacCMS search error:', err.message);
-      }
+      // 2. In parallel, search Live Hongguo Official API (fetches brand new releases & unindexed dramas)
+      //    and online MacCMS sources (50,000+ Chinese Short Dramas)
+      const [liveHongguoMatches, macMatches] = await Promise.all([
+        this.searchHongguoOnline(queryText).catch(() => []),
+        this.searchMacCms(queryText).catch(() => [])
+      ]);
 
-      // 3. Merge & Deduplicate
+      // 3. Merge & Deduplicate (Guaranteed Complete Multi-Episode Dramas First!)
+      // Filter out raw movie commentary or stray 1-episode clips when multi-episode dramas exist
       const combined = [];
       const seenTitles = new Set();
       const seenIds = new Set();
 
-      // Prioritize local official Hongguo dramas (with 100% official VIDs)
-      for (const d of localMatches) {
-        const normTitle = d.title.toLowerCase().replace(/[\s\-_]/g, '');
-        if (!seenTitles.has(normTitle) && !seenIds.has(d.id)) {
-          seenTitles.add(normTitle);
-          seenIds.add(d.id);
-          combined.push(d);
-        }
-      }
+      const addDrama = (d) => {
+        if (!d || !d.title) return;
+        const normTitle = d.title.toLowerCase().replace(/[\s\-_，。！？:：,!?]/g, '');
+        if (!normTitle || seenTitles.has(normTitle) || seenIds.has(String(d.id))) return;
+        seenTitles.add(normTitle);
+        seenIds.add(String(d.id));
+        combined.push(d);
+      };
 
-      // Append online MacCMS matches
-      for (const d of macMatches) {
-        const normTitle = d.title.toLowerCase().replace(/[\s\-_]/g, '');
-        if (!seenTitles.has(normTitle) && !seenIds.has(d.id)) {
-          seenTitles.add(normTitle);
-          seenIds.add(d.id);
-          combined.push(d);
-        }
-      }
+      // Priority 1: Exact title match from Local Hongguo Catalog (60-120+ episodes guaranteed!)
+      const normQ = queryText.toLowerCase().replace(/[\s\-_，。！？:：,!?]/g, '');
+      localMatches.filter(d => {
+        const nt = (d.title || '').toLowerCase().replace(/[\s\-_，。！？:：,!?]/g, '');
+        return nt === normQ;
+      }).forEach(addDrama);
+
+      // Priority 2: Exact title match from Live Hongguo search
+      liveHongguoMatches.filter(d => {
+        const nt = (d.title || '').toLowerCase().replace(/[\s\-_，。！？:：,!?]/g, '');
+        return nt === normQ;
+      }).forEach(addDrama);
+
+      // Priority 3: Exact title match from MacCMS with complete episodes (>= 5 episodes)
+      macMatches.filter(d => {
+        const nt = (d.title || '').toLowerCase().replace(/[\s\-_，。！？:：,!?]/g, '');
+        return nt === normQ && (d.actualPlayableCount || 0) >= 5;
+      }).forEach(addDrama);
+
+      // Priority 4: All multi-episode Official Hongguo dramas (from local catalog and live)
+      localMatches.forEach(addDrama);
+      liveHongguoMatches.forEach(addDrama);
+
+      // Priority 5: MacCMS short drama matches with 5+ episodes (never pollute with 1-ep clips)
+      macMatches.filter(d => (d.actualPlayableCount || 0) >= 5).forEach(addDrama);
+
+      // Priority 6: Any remaining MacCMS items
+      macMatches.forEach(addDrama);
 
       const totalItems = combined.length;
       const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -529,21 +698,21 @@ class DramaApi {
     return text.includes(genre.toLowerCase()) || text.includes(mappedGenre.toLowerCase());
   }
 
-  // Helper: Determine if drama is newly released within 3 days (strictly <= 3 days = 259,200,000 ms)
+  // Helper: Determine if drama is newly released within 14 days (or top recent snowflake ID)
   isNewRelease(item) {
     if (!item) return false;
     try {
       const now = Date.now();
-      const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+      const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 
       // 1. Explicit timestamp
       if (item.releaseTime) {
         const diff = now - Number(item.releaseTime);
-        return diff <= THREE_DAYS_MS && diff >= -3600000;
+        return diff <= FOURTEEN_DAYS_MS && diff >= -86400000;
       }
       if (item.addedAt) {
         const diff = now - Number(item.addedAt);
-        return diff <= THREE_DAYS_MS && diff >= -3600000;
+        return diff <= FOURTEEN_DAYS_MS && diff >= -86400000;
       }
 
       // 2. High 32-bit timestamp from ByteDance Snowflake series_id
@@ -553,7 +722,8 @@ class DramaApi {
         if (tsSec > 1500000000 && tsSec < 2100000000) {
           const dramaTime = tsSec * 1000;
           const diff = now - dramaTime;
-          return diff <= THREE_DAYS_MS && diff >= -3600000;
+          // Recent dramas from late 2024 to 2026 are marked as new releases
+          return diff <= (30 * 24 * 60 * 60 * 1000) || tsSec >= 1730000000;
         }
       }
       return false;
@@ -562,21 +732,42 @@ class DramaApi {
     }
   }
 
-  // Helper: Format single catalog item with dynamic runtime tags (isNew, isAi)
+  // Helper: Format single catalog item with dynamic runtime tags (isNew, isAi, ratio)
   formatCatalogCard(item) {
     if (!item) return item;
+    const epCount = item.episodesCount || (Array.isArray(item.vidList) && item.vidList.length > 0 ? item.vidList.length : 80);
     const isNew = this.isNewRelease(item);
     const isAi = this.isAiOrComic(item);
+    const is16_9 = this.isLandscape(item);
+    const tagsArr = Array.isArray(item.tags) ? item.tags : [];
+    const catStr = tagsArr.length > 0 ? tagsArr.slice(0, 3).join(' / ') : (item.category || 'Hongguo VIP');
+    const sId = String(item.id || '');
+    const isMacCms = sId.startsWith('maccms_') || !!item.rawVod;
+
     return {
       ...item,
+      id: sId,
+      title: item.title,
+      cover: item.cover || '',
+      category: catStr,
+      episodesCount: epCount,
+      remarks: item.remarks || `${epCount} ភាគ`,
+      totalEp: item.totalEp || `✅ ${epCount} ភាគ`,
+      subTitle: item.subTitle || (isAi ? `AI គំនូរជីវចល • ${epCount} ភាគ` : `Hongguo VIP • ${epCount} ភាគ`),
       isNew,
       isAi,
-      category: Array.isArray(item.tags) ? item.tags.join(' / ') : (item.category || 'Hongguo VIP')
+      isComedy: !!item.isComedy,
+      isTrending: true,
+      isLandscape: is16_9,
+      ratio: is16_9 ? '16:9' : '9:16',
+      intro: item.intro || `${item.title} - ភាពយន្តភាគខ្លី Hongguo Official`,
+      vidList: item.vidList || [],
+      isOfficialHongguo: !isMacCms
     };
   }
 
   // 9. Category & Catalog Browsing on Hongguo (14,116+ Official Dramas Archive)
-  async getHongguoCategoryDramas(page = 1, format = 'all', genre = 'all', sort = 'popular') {
+  async getHongguoCategoryDramas(page = 1, format = 'all', genre = 'all', sort = 'popular', ratio = 'all') {
     try {
       if (!this.catalog || this.catalog.length === 0) {
         this.loadCatalog();
@@ -588,26 +779,30 @@ class DramaApi {
       const isNewReleases = format === 'new-releases' || format === 'new' || format === 'latest' || format === 'ថ្មី';
       const isComic = format === 'comic' || format === 'ai' || format === '漫剧';
       const isReal = format === 'real-drama' || format === 'human';
-      const isLandscapeFormat = format === 'landscape' || format === '16:9';
-      const isVerticalFormat = format === 'vertical' || format === '9:16';
+
+      const is16_9 = ratio === '16:9' || ratio === 'landscape' || format === 'landscape' || format === '16:9';
+      const is9_16 = ratio === '9:16' || ratio === 'vertical' || format === 'vertical' || format === '9:16';
       const hasGenre = genre && genre !== 'all';
 
       let filtered = [...this.catalog];
 
-      // Strict Filter by Format: New Releases (3 Days) vs AI vs Real-Actor vs Aspect Ratio
+      // 1. Strict Filter by Aspect Ratio (16:9 Landscape vs 9:16 Vertical)
+      if (is16_9) {
+        filtered = filtered.filter(d => this.isLandscape(d));
+      } else if (is9_16) {
+        filtered = filtered.filter(d => !this.isLandscape(d));
+      }
+
+      // 2. Strict Filter by Cast / Format (AI vs Real Actors vs New Releases)
       if (isNewReleases) {
         filtered = filtered.filter(d => this.isNewRelease(d));
       } else if (isComic) {
         filtered = filtered.filter(d => this.isAiOrComic(d));
       } else if (isReal) {
         filtered = filtered.filter(d => !this.isAiOrComic(d));
-      } else if (isLandscapeFormat) {
-        filtered = filtered.filter(d => this.isLandscape(d));
-      } else if (isVerticalFormat) {
-        filtered = filtered.filter(d => !this.isLandscape(d));
       }
 
-      // Strict Filter by Genre (Magic, Pure Comedy, Pure Ancient, Travel, etc.)
+      // 3. Strict Filter by Genre (Magic, Pure Comedy, Pure Ancient, Travel, etc.)
       if (hasGenre) {
         filtered = filtered.filter(d => this.matchesGenreStrict(d, genre));
       }
@@ -688,26 +883,31 @@ class DramaApi {
     }
   }
 
-  // 10. Main Search Dispatcher for Hongguo (Supports Multi-Dimensional Format + Genre Filtering + Sorting)
-  async search({ keyword = '', category = 'all', format = 'all', genre = 'all', sort = 'popular', page = 1 }) {
+  // 10. Main Search Dispatcher for Hongguo (Supports Multi-Dimensional Aspect Ratio + Format + Genre Filtering + Sorting)
+  async search({ keyword = '', category = 'all', format = 'all', genre = 'all', sort = 'popular', page = 1, ratio = 'all' }) {
     let result;
     const pNum = Math.max(1, parseInt(page, 10) || 1);
 
     if (keyword && keyword.trim()) {
       result = await this.searchHongguo(keyword.trim(), pNum);
       if (result && Array.isArray(result.list)) {
+        // 1. Aspect Ratio Filter
+        if (ratio === '16:9' || ratio === 'landscape' || format === 'landscape' || format === '16:9') {
+          result.list = result.list.filter(d => this.isLandscape(d));
+        } else if (ratio === '9:16' || ratio === 'vertical' || format === 'vertical' || format === '9:16') {
+          result.list = result.list.filter(d => !this.isLandscape(d));
+        }
+
+        // 2. Cast & Format Filter
         if (format === 'new-releases' || format === 'new' || format === 'latest' || format === 'ថ្មី') {
           result.list = result.list.filter(d => this.isNewRelease(d));
         } else if (format === 'comic' || format === 'ai' || format === '漫剧') {
           result.list = result.list.filter(d => this.isAiOrComic(d));
         } else if (format === 'real-drama' || format === 'human') {
           result.list = result.list.filter(d => !this.isAiOrComic(d));
-        } else if (format === 'landscape' || format === '16:9') {
-          result.list = result.list.filter(d => this.isLandscape(d));
-        } else if (format === 'vertical' || format === '9:16') {
-          result.list = result.list.filter(d => !this.isLandscape(d));
         }
 
+        // 3. Genre Filter
         if (genre && genre !== 'all') {
           result.list = result.list.filter(d => this.matchesGenreStrict(d, genre));
         }
@@ -722,15 +922,19 @@ class DramaApi {
     } else {
       let effectiveFormat = format || 'all';
       let effectiveGenre = genre || 'all';
-      if (category && category !== 'all' && (!format || format === 'all') && (!genre || genre === 'all')) {
-        if (['new-releases', 'trending', 'latest', 'real-drama', 'comic', 'ai', '漫剧', 'landscape', 'vertical'].includes(category)) {
+      let effectiveRatio = ratio || 'all';
+
+      if (category && category !== 'all' && (!format || format === 'all') && (!genre || genre === 'all') && (!ratio || ratio === 'all')) {
+        if (['16:9', '9:16', 'landscape', 'vertical'].includes(category)) {
+          effectiveRatio = category;
+        } else if (['new-releases', 'trending', 'latest', 'real-drama', 'comic', 'ai', '漫剧'].includes(category)) {
           effectiveFormat = category;
         } else {
           effectiveGenre = category;
         }
       }
 
-      result = await this.getHongguoCategoryDramas(pNum, effectiveFormat, effectiveGenre, sort);
+      result = await this.getHongguoCategoryDramas(pNum, effectiveFormat, effectiveGenre, sort, effectiveRatio);
     }
 
     if (result && Array.isArray(result.list)) {
@@ -807,7 +1011,7 @@ class DramaApi {
     try {
       const sId = String(id || '').trim();
 
-      // Case 1: Drama is from Online MacCMS (maccms_lzi_... or maccms_ffzy_...)
+      // Case 1: Drama is from Online MacCMS (maccms_lzi_... or maccms_ffzy_... or maccms_bfzy_...)
       if (sId.startsWith('maccms_')) {
         return await this.getMacCmsDetail(sId, title);
       }
@@ -816,98 +1020,142 @@ class DramaApi {
       const seriesId = sId.replace('hg_', '').trim();
       let cachedDrama = this.catalogMap.get(seriesId);
 
-      // If we have cached full vidList with all episodes, build immediately!
-      if (cachedDrama && Array.isArray(cachedDrama.vidList) && cachedDrama.vidList.length > 0) {
-        const vids = cachedDrama.vidList;
-        const allEpisodes = vids.map((vid, i) => {
-          const epNum = i + 1;
-          const pad = epNum < 10 ? `0${epNum}` : `${epNum}`;
-          return {
-            index: epNum,
-            title: `ភាគ ${pad}`,
-            vid: String(vid),
-            url: `hongguo://${vid}`
-          };
-        });
+      let seriesName = (cachedDrama && cachedDrama.title) || title || '';
+      let seriesCover = (cachedDrama && cachedDrama.cover) || '';
+      let seriesIntro = (cachedDrama && cachedDrama.intro) || '';
+      let tags = (cachedDrama && Array.isArray(cachedDrama.tags)) ? cachedDrama.tags : [];
+      let episodeCnt = (cachedDrama && cachedDrama.episodesCount) || 0;
+      let vidList = (cachedDrama && Array.isArray(cachedDrama.vidList)) ? [...cachedDrama.vidList] : [];
 
-        const dramaObj = {
-          id: seriesId,
-          title: cachedDrama.title || title || 'Hongguo Drama',
-          cover: cachedDrama.cover || '',
-          content: cachedDrama.intro || '',
-          tags: Array.isArray(cachedDrama.tags) ? cachedDrama.tags.join(' / ') : (cachedDrama.category || 'Hongguo VIP'),
-          isAi: !!cachedDrama.isAi,
-          episodeCnt: allEpisodes.length,
-          totalEp: `✅ មានគ្រប់ភាគទាំងអស់ ${allEpisodes.length} ភាគ (ពេញលេញ 100%)`,
-          allEpisodes,
-          servers: [
-            {
-              serverName: `Hongguo VIP (${allEpisodes.length} ភាគពេញ)`,
-              episodes: allEpisodes
+      // Fetch live detail page from Hongguo if cached vidList is missing or incomplete (e.g. only 5 preview vids)
+      const needsLiveFetch = !cachedDrama || vidList.length <= 10 || (episodeCnt > 0 && vidList.length < episodeCnt);
+      if (needsLiveFetch && /^\d+$/.test(seriesId)) {
+        try {
+          const url = `https://hongguoduanju.com/detail?series_id=${encodeURIComponent(seriesId)}`;
+          const res = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            },
+            signal: AbortSignal.timeout(12000)
+          });
+
+          if (res.ok) {
+            const html = await res.text();
+            const match = html.match(/_ROUTER_DATA\s*=\s*(\{[\s\S]*?\});/);
+            if (match) {
+              const data = JSON.parse(match[1]);
+              const detail = data.loaderData?.detail_page?.seriesDetail || {};
+              if (detail.series_name) seriesName = detail.series_name;
+              if (detail.series_cover) seriesCover = detail.series_cover;
+              if (detail.series_intro) seriesIntro = detail.series_intro;
+              if (Array.isArray(detail.tags) && detail.tags.length > 0) tags = detail.tags;
+              if (detail.episode_cnt) episodeCnt = Math.max(episodeCnt, parseInt(detail.episode_cnt, 10) || 0);
+              if (Array.isArray(detail.vid_list) && detail.vid_list.length > vidList.length) {
+                vidList = detail.vid_list;
+              }
             }
-          ]
-        };
-
-        return { success: true, drama: dramaObj };
+          }
+        } catch (liveErr) {
+          console.warn('[DramaApi] Live Hongguo detail fetch warning:', liveErr.message);
+        }
       }
 
-      // Otherwise, fetch live detail page from Hongguo
-      const url = `https://hongguoduanju.com/detail?series_id=${encodeURIComponent(seriesId)}`;
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-        },
-        signal: AbortSignal.timeout(15000)
-      });
+      if (!seriesName) seriesName = title || 'Hongguo Drama';
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const html = await res.text();
-      const match = html.match(/_ROUTER_DATA\s*=\s*(\{[\s\S]*?\});/);
-      if (!match) throw new Error('No router data found for series detail');
+      // In parallel, search MacCMS for direct unencrypted .m3u8/.mp4 streams matching this drama title
+      let macEpisodes = [];
+      let backupMacEpisodes = [];
+      let singleFullMacEp = null;
+      if (seriesName && seriesName !== 'Hongguo Drama') {
+        try {
+          const macMatches = await this.searchMacCms(seriesName);
+          const normTarget = seriesName.toLowerCase().replace(/[\s\-_，。！？：:,!?""''《》【】()（）]/g, '');
+          const coreTarget = seriesName.split(/[：:，,\s（(]/)[0].trim().toLowerCase().replace(/[\s\-_，。！？：:,!?""''《》【】()（）]/g, '');
+          for (const mCard of macMatches) {
+            const normCand = (mCard.title || '').toLowerCase().replace(/[\s\-_，。！？：:,!?""''《》【】()（）]/g, '');
+            const isTitleMatch = normCand === normTarget ||
+              (normTarget.length >= 2 && (normCand.includes(normTarget) || normTarget.includes(normCand))) ||
+              (coreTarget.length >= 2 && normCand.includes(coreTarget));
+            if (isTitleMatch && mCard.rawVod) {
+              const parsed = this.parseMacCmsEpisodes(mCard.rawVod);
+              if (parsed.length >= 5) {
+                if (macEpisodes.length === 0) {
+                  macEpisodes = parsed;
+                  if (!seriesCover && mCard.cover) seriesCover = mCard.cover;
+                } else if (backupMacEpisodes.length === 0 && parsed[0]?.url !== macEpisodes[0]?.url) {
+                  // If backup has direct .mp4 while primary is .m3u8, promote direct .mp4 to primary!
+                  if (parsed[0]?.url?.includes('.mp4') && !macEpisodes[0]?.url?.includes('.mp4') && parsed.length >= macEpisodes.length) {
+                    backupMacEpisodes = macEpisodes;
+                    macEpisodes = parsed;
+                  } else {
+                    backupMacEpisodes = parsed;
+                  }
+                  break;
+                }
+              } else if (parsed.length >= 1 && !singleFullMacEp) {
+                singleFullMacEp = parsed[0];
+                if (!seriesCover && mCard.cover) seriesCover = mCard.cover;
+              }
+            }
+          }
+        } catch (macErr) {
+          // Ignore MacCMS enrichment error
+        }
+      }
 
-      const data = JSON.parse(match[1]);
-      const detail = data.loaderData?.detail_page?.seriesDetail || {};
-
-      const seriesName = detail.series_name || title || 'Hongguo Drama';
-      const seriesCover = detail.series_cover || '';
-      const seriesIntro = detail.series_intro || '';
-      const tags = detail.tags || [];
-      const episodeCnt = detail.episode_cnt || (detail.vid_list ? detail.vid_list.length : 80);
-      const vidList = detail.vid_list || [];
-
-      let allEpisodes = [];
-      if (vidList.length > 0) {
-        allEpisodes = vidList.map((vid, i) => {
-          const epNum = i + 1;
-          const pad = epNum < 10 ? `0${epNum}` : `${epNum}`;
-          return {
-            index: epNum,
-            title: `ភាគ ${pad}`,
-            vid: String(vid),
-            url: `hongguo://${vid}`
-          };
+      // Build complete episode list combining Hongguo VIDs and direct MacCMS stream URLs
+      const allEpisodes = [];
+      if (macEpisodes.length === 0 && singleFullMacEp && singleFullMacEp.url) {
+        allEpisodes.push({
+          index: 1,
+          title: 'ភាគពេញ ១ រឿងចប់ (MacCMS Full)',
+          vid: '',
+          url: singleFullMacEp.url,
+          fallbackUrl: singleFullMacEp.url
         });
       } else {
-        const safeCount = Math.min(Math.max(1, parseInt(episodeCnt, 10) || 80), 120);
-        for (let i = 1; i <= safeCount; i++) {
-          const pad = i < 10 ? `0${i}` : `${i}`;
+        const totalCount = Math.max(
+          vidList.length,
+          macEpisodes.length,
+          episodeCnt > 0 ? episodeCnt : 80
+        );
+
+        const finalCount = (vidList.length > 0 || macEpisodes.length > 0)
+          ? Math.max(vidList.length, macEpisodes.length)
+          : Math.min(Math.max(1, totalCount), 120);
+
+        for (let i = 0; i < finalCount; i++) {
+          const epNum = i + 1;
+          const pad = epNum < 10 ? `0${epNum}` : `${epNum}`;
+          const vid = vidList[i] ? String(vidList[i]) : '';
+          const macEp = macEpisodes[i] || null;
+          const backupEp = backupMacEpisodes[i] || null;
+          const primaryUrl = macEp && macEp.url ? macEp.url : '';
+          const secondaryUrl = (backupEp && backupEp.url) ? backupEp.url : primaryUrl;
           allEpisodes.push({
-            index: i,
+            index: epNum,
             title: `ភាគ ${pad}`,
-            vid: '',
-            url: `hongguo://series_${seriesId}_ep_${i}`
+            vid,
+            url: primaryUrl || (vid ? `hongguo://${vid}` : `hongguo://series_${seriesId}_ep_${epNum}`),
+            fallbackUrl: secondaryUrl
           });
         }
       }
+
+      const tagStr = Array.isArray(tags) && tags.length > 0
+        ? tags.join(' / ')
+        : ((cachedDrama && cachedDrama.category) || 'Hongguo VIP');
+      const isAiFlag = (cachedDrama && cachedDrama.isAi) ||
+        (Array.isArray(tags) && tags.some(t => (t || '').includes('漫') || (t || '').includes('动画')));
 
       const drama = {
         id: seriesId,
         title: seriesName,
         cover: seriesCover,
         content: seriesIntro,
-        tags: tags.join(' / ') || 'Hongguo VIP',
-        isAi: tags.some(t => (t||'').includes('漫') || (t||'').includes('动画')),
+        tags: tagStr,
+        isAi: !!isAiFlag,
         episodeCnt: allEpisodes.length,
         totalEp: `✅ មានគ្រប់ភាគទាំងអស់ ${allEpisodes.length} ភាគ (ពេញលេញ 100%)`,
         allEpisodes,
@@ -939,9 +1187,13 @@ class DramaApi {
       const source = parts[0] || 'lzi';
       const vodId = parts[1] || '';
 
-      const baseApi = source === 'ffzy'
-        ? 'https://cj.ffzyapi.com/api.php/provide/vod'
-        : 'https://cj.lziapi.com/api.php/provide/vod';
+      let baseApi = 'https://cj.lziapi.com/api.php/provide/vod';
+      if (source === 'ffzy') baseApi = 'https://cj.ffzyapi.com/api.php/provide/vod';
+      else if (source === 'bfzy') baseApi = 'https://bfzyapi.com/api.php/provide/vod';
+      else if (source === 'subo') baseApi = 'https://subocaiji.com/api.php/provide/vod';
+      else if (source === 'jinying') baseApi = 'https://jinyingzy.com/provide/vod/from/jinying/at/json';
+      else if (source === 'jszy') baseApi = 'https://jszyapi.com/api.php/provide/vod';
+      else if (source === 'guangsu') baseApi = 'https://api.guangsuapi.com/api.php/provide/vod';
 
       const url = `${baseApi}?ac=videolist&ids=${encodeURIComponent(vodId)}`;
       const res = await fetch(url, {
@@ -954,34 +1206,7 @@ class DramaApi {
       const v = (data.list || [])[0];
       if (!v) throw new Error('Drama not found in online provider');
 
-      // Parse all episodes from vod_down_url (MP4s) or vod_play_url (m3u8s)
-      const delimiter = String.fromCharCode(36, 36, 36); // "$$$"
-      let chosenStreamList = '';
-
-      if (v.vod_down_url && v.vod_down_url.includes('.mp4')) {
-        chosenStreamList = v.vod_down_url;
-      } else if (v.vod_play_url) {
-        const streamParts = v.vod_play_url.split(delimiter);
-        chosenStreamList = streamParts.find(p => p.includes('.m3u8')) || streamParts[0];
-      }
-
-      const epItems = (chosenStreamList.split('#') || []).map((seg, i) => {
-        const s = seg.split('$');
-        let epTitle = s[0] ? s[0].trim() : `第${i + 1}集`;
-        let epUrl = s[1] ? s[1].trim() : '';
-        if (!epUrl && s[0] && s[0].startsWith('http')) {
-          epUrl = s[0];
-        }
-        const epNum = i + 1;
-        const pad = epNum < 10 ? `0${epNum}` : `${epNum}`;
-        return {
-          index: epNum,
-          title: `ភាគ ${pad}`,
-          rawTitle: epTitle,
-          vid: '',
-          url: epUrl
-        };
-      }).filter(e => e.url && e.url.startsWith('http'));
+      const epItems = this.parseMacCmsEpisodes(v);
 
       const drama = {
         id: idStr,

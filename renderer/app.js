@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Application State
   let currentLang = 'km';
   let currentView = 'catalog';
-  let selectedFormat = 'all'; // 'all' | 'landscape' | 'vertical' | 'trending' | 'real-drama' | 'comic'
+  let selectedRatio = 'all';  // 'all' | '16:9' | '9:16'
+  let selectedFormat = 'all'; // 'all' | 'real-drama' | 'comic' | 'new-releases' | 'trending'
   let selectedGenre = 'all';  // 'all' | '战神' | '逆袭' | '总裁' | '甜宠' | '重生' | '神豪' | '赘婿' | '古装' | '悬疑' | '喜剧'
   let selectedSort = 'popular'; // 'popular' | 'newest' | 'episodes'
   let currentKeyword = '';
@@ -56,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // DOM Elements - Catalog
   const inputCinemaSearch = document.getElementById('input-cinema-search');
   const btnCinemaSearch = document.getElementById('btn-cinema-search');
+  const ratioPills = document.querySelectorAll('#ratio-pills-wrap .cat-pill');
   const formatPills = document.querySelectorAll('#format-pills-wrap .cat-pill');
   const genrePills = document.querySelectorAll('#genre-pills-wrap .cat-pill');
   const selectCatalogSort = document.getElementById('select-catalog-sort');
@@ -278,17 +280,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    const activeRatioPill = document.querySelector('#ratio-pills-wrap .cat-pill.active');
     const activeFormatPill = document.querySelector('#format-pills-wrap .cat-pill.active');
     const activeGenrePill = document.querySelector('#genre-pills-wrap .cat-pill.active');
-    const formatText = activeFormatPill ? activeFormatPill.textContent.trim() : '';
-    const genreText = activeGenrePill ? activeGenrePill.textContent.trim() : '';
 
-    if (selectedFormat !== 'all' && selectedGenre !== 'all') {
-      catalogHeadingTitle.textContent = `🎬 ${formatText} + 🏷️ ${genreText} • Hongguo Official`;
-    } else if (selectedFormat !== 'all') {
-      catalogHeadingTitle.textContent = `🎬 ${formatText} • Hongguo Official`;
-    } else if (selectedGenre !== 'all') {
-      catalogHeadingTitle.textContent = `🎬 🏷️ ${genreText} • Hongguo Official`;
+    const ratioText = (activeRatioPill && selectedRatio !== 'all') ? activeRatioPill.textContent.trim() : '';
+    const formatText = (activeFormatPill && selectedFormat !== 'all') ? activeFormatPill.textContent.trim() : '';
+    const genreText = (activeGenrePill && selectedGenre !== 'all') ? activeGenrePill.textContent.trim() : '';
+
+    const parts = [];
+    if (ratioText) parts.push(ratioText);
+    if (formatText) parts.push(formatText);
+    if (genreText) parts.push(genreText);
+
+    if (parts.length > 0) {
+      catalogHeadingTitle.textContent = `🎬 ${parts.join(' + ')} • Hongguo Official`;
     } else {
       catalogHeadingTitle.textContent = '🎬 រឿងភាគ Hongguo Official VIP';
     }
@@ -307,10 +313,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      if (targetView === 'tv') {
+        switchView('tv');
+        dockTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        initTvView();
+        return;
+      }
+
       if (targetView === 'catalog') {
         switchView('catalog');
         dockTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
+
+        ratioPills.forEach(p => p.classList.remove('active'));
+        const allRatioPill = document.querySelector('#ratio-pills-wrap .cat-pill[data-ratio="all"]');
+        if (allRatioPill) allRatioPill.classList.add('active');
+        selectedRatio = 'all';
 
         formatPills.forEach(p => p.classList.remove('active'));
         const allFormatPill = document.querySelector('#format-pills-wrap .cat-pill[data-format="all"]');
@@ -358,6 +377,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderDownloadTasks();
     } else if (viewName === 'favorites') {
       renderFavorites();
+    } else if (viewName === 'tv') {
+      initTvView();
     }
   }
 
@@ -371,6 +392,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           ...currentSettings,
           downloadDir: res.folder
         });
+
+        // Update all non-completed tasks in cachedTasks to the new directory
+        if (Array.isArray(cachedTasks)) {
+          cachedTasks.forEach(t => {
+            if (t.status !== 'completed') {
+              t.destDir = res.folder;
+              t.customDownloadDir = res.folder;
+            }
+          });
+        }
+
+        // Re-render download cards immediately so all Folder texts update to new path
+        renderDownloadTasks();
+
         showToast(`📁 បានប្តូរថតទាញយកទៅកាន់: ${res.folder}`);
       }
     } catch (e) {
@@ -383,7 +418,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnBrowseSetting) btnBrowseSetting.onclick = pickDirectory;
   if (btnModalChangeDir) btnModalChangeDir.onclick = pickDirectory;
 
-  // 5. Multi-Dimensional Category Filtering (Row 1: Format + Row 2: Genre)
+  // 5. Multi-Dimensional Category Filtering (Row 1: Ratio + Row 2: Cast/Format + Row 3: Genre)
+  ratioPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      ratioPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectedRatio = pill.getAttribute('data-ratio') || 'all';
+      currentKeyword = '';
+      if (inputCinemaSearch) inputCinemaSearch.value = '';
+      currentPage = 1;
+      updateCatalogHeading();
+      if (cinemaViewport) cinemaViewport.scrollTo({ top: 0, behavior: 'smooth' });
+      loadHongguoDramas();
+    });
+  });
+
   formatPills.forEach(pill => {
     pill.addEventListener('click', () => {
       formatPills.forEach(p => p.classList.remove('active'));
@@ -545,6 +594,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       : '';
     const isNew = drama.isNew !== undefined ? drama.isNew : isDramaNewRelease(drama);
     const newBadgeHtml = isNew ? `<div class="card-badge-new">🔥 NEW</div>` : '';
+    const is16_9 = drama.ratio === '16:9' || drama.isLandscape || /横屏|横版|16[:\-]9|16比9|电影|院线|宽屏/i.test((drama.title || '') + ' ' + (Array.isArray(drama.tags) ? drama.tags.join(' ') : ''));
+    const ratioBadgeHtml = is16_9
+      ? `<span class="card-ratio-badge ratio-16-9" title="ទំហំ 16:9 ទទឹង (Landscape)">🖥️ 16:9</span>`
+      : `<span class="card-ratio-badge ratio-9-16" title="ទំហំ 9:16 បញ្ឈរ (Vertical)">📱 9:16</span>`;
+    const isAi = drama.isAi || /漫剧|ai|动画|动漫/i.test((drama.title || '') + ' ' + (Array.isArray(drama.tags) ? drama.tags.join(' ') : ''));
+    const aiBadgeHtml = isAi
+      ? `<span class="card-ai-badge" title="AI & គំនូរជីវចល">🤖 AI</span>`
+      : '';
 
     card.innerHTML = `
       <div class="card-poster-wrap">
@@ -562,6 +619,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="card-title-zh" title="${drama.title}">${drama.title}</div>
         <div class="card-meta-line">
           <span class="card-tag">${drama.category || 'Hongguo VIP'}</span>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            ${ratioBadgeHtml}
+            ${aiBadgeHtml}
+          </div>
           <span>✅ ${epCount} ភាគ</span>
         </div>
       </div>
@@ -601,6 +662,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentPage++;
       const res = await api.searchDramas({
         keyword: currentKeyword,
+        ratio: selectedRatio,
         format: selectedFormat,
         genre: selectedGenre,
         page: currentPage,
@@ -701,9 +763,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
 
     try {
-      console.log('Calling api.searchDramas with:', { keyword: currentKeyword, format: selectedFormat, genre: selectedGenre, page: currentPage, sort: selectedSort });
+      console.log('Calling api.searchDramas with:', { keyword: currentKeyword, ratio: selectedRatio, format: selectedFormat, genre: selectedGenre, page: currentPage, sort: selectedSort });
       const res = await api.searchDramas({
         keyword: currentKeyword,
+        ratio: selectedRatio,
         format: selectedFormat,
         genre: selectedGenre,
         page: currentPage,
@@ -960,7 +1023,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             episodeIndex: ep.index,
             episodeTitle: ep.title,
             url: ep.url,
+            fallbackUrl: ep.fallbackUrl || '',
             vid: ep.vid || '',
+            totalEpisodes: episodes.length,
             cover: dramaCover,
             destDir,
             customDownloadDir: destDir,
@@ -978,8 +1043,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     showToast(`👑 បានបន្ថែមគ្រប់រដូវកាលទាំងអស់ (សរុប ${totalQueued} ភាគ) ទៅក្នុងបញ្ជីរង់ចាំ (Waiting)!`);
-    modalDetail.classList.remove('active');
-    switchView('downloads');
+    // Stay at the same place, do not switch to downloads tab
   }
 
   // 11. Render Range Filters: [1-30], [31-60], [All]
@@ -1186,7 +1250,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       episodeIndex: ep.index,
       episodeTitle: ep.title,
       url: ep.url,
+      fallbackUrl: ep.fallbackUrl || '',
       vid: ep.vid || '',
+      totalEpisodes: currentAllEpisodes ? currentAllEpisodes.length : episodes.length,
       cover: currentDetailDrama.cover,
       destDir,
       customDownloadDir: destDir,
@@ -1196,9 +1262,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       showToast(`⏳ កំពុងបញ្ជូន ${tasks.length} ភាគទៅកាន់បញ្ជី Download...`);
       await api.addBatchDownload(tasks);
-      showToast(`📥 បានបញ្ជូនរឿង "${currentDetailDrama.title}" (${tasks.length} ភាគ) ទៅក្នុងបញ្ជីរង់ចាំ (Waiting)! សូមជ្រើស Folder ឬចុច "ទាញយក" នៅពេលរួចរាល់`);
-      modalDetail.classList.remove('active');
-      switchView('downloads');
+      showToast(`📥 បានបញ្ជូនរឿង "${currentDetailDrama.title}" (${tasks.length} ភាគ) ទៅក្នុងបញ្ជីរង់ចាំ (Waiting)!`);
+      // Stay at the same place, do not switch to downloads tab
     } catch (err) {
       console.error('Error adding batch to download queue:', err);
       showToast(`❌ បរាជ័យក្នុងការបន្ថែមភាគ: ${err.message}`);
@@ -1704,8 +1769,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <span class="drama-series-badge-ep">សរុប ${total} ភាគ</span>
                 <span class="drama-series-badge-progress">${completed} / ${total} ភាគចប់</span>
               </div>
-              <div class="drama-series-folder-line" style="font-size: 11.5px; color: var(--gold-primary); margin: 3px 0 1px 0; display: flex; align-items: center; gap: 6px;">
-                <span>📁 Folder: <span class="card-dest-dir-text" style="color: #cbd5e1; font-family: monospace;">${grp.destDir || currentSettings.downloadDir}</span></span>
+              <div class="drama-series-folder-line" style="font-size: 11.5px; color: var(--gold-primary); margin: 3px 0 1px 0; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;" title="ចុចទីនេះដើម្បីប្តូរ Folder សម្រាប់រឿងនេះ">
+                <span>📁 Folder: <span class="card-dest-dir-text" style="color: #cbd5e1; font-family: monospace; text-decoration: underline;">${grp.destDir || currentSettings.downloadDir}</span></span>
+                <span style="font-size: 10px; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">✏️ ប្តូរ</span>
               </div>
               <div class="drama-series-status-line">
                 <div class="drama-series-status-msg">${statusMsg}</div>
@@ -1751,19 +1817,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
 
         // Action bindings
-        const btnChangeFolder = card.querySelector('.btn-series-change-folder');
-        if (btnChangeFolder) {
-          btnChangeFolder.onclick = async () => {
-            const res = await api.selectFolder();
-            if (res && res.success && res.folder) {
-              await api.updateDramaFolder({ dramaTitle: card._grp.dramaTitle, newDir: res.folder });
-              card._grp.destDir = res.folder;
-              const folderEl = card.querySelector('.card-dest-dir-text');
-              if (folderEl) folderEl.textContent = res.folder;
-              showToast(`📁 បានប្តូរ Folder ដាក់រឿង "${card._grp.dramaTitle}" ទៅកាន់:\n${res.folder}`);
+        const handleSeriesFolderChange = async () => {
+          const res = await api.selectFolder();
+          if (res && res.success && res.folder) {
+            await api.updateDramaFolder({ dramaTitle: card._grp.dramaTitle, newDir: res.folder });
+            card._grp.destDir = res.folder;
+
+            // Immediately update all tasks of this drama in cachedTasks
+            if (Array.isArray(cachedTasks)) {
+              cachedTasks.forEach(t => {
+                if (t.dramaTitle === card._grp.dramaTitle) {
+                  t.destDir = res.folder;
+                  t.customDownloadDir = res.folder;
+                }
+              });
             }
-          };
-        }
+
+            const folderEl = card.querySelector('.card-dest-dir-text');
+            if (folderEl) folderEl.textContent = res.folder;
+            renderDownloadTasks();
+            showToast(`📁 បានប្តូរ Folder ដាក់រឿង "${card._grp.dramaTitle}" ទៅកាន់:\n${res.folder}`);
+          }
+        };
+
+        const btnChangeFolder = card.querySelector('.btn-series-change-folder');
+        if (btnChangeFolder) btnChangeFolder.onclick = handleSeriesFolderChange;
+
+        const folderLine = card.querySelector('.drama-series-folder-line');
+        if (folderLine) folderLine.onclick = handleSeriesFolderChange;
 
         const btnWatch = card.querySelector('.btn-series-watch');
         if (btnWatch) {
@@ -2680,7 +2761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnUpdaterBrowser = document.getElementById('btn-updater-browser');
   const btnUpdaterAction = document.getElementById('btn-updater-action');
 
-  let currentAppVersion = '2.0.4';
+  let currentAppVersion = '2.0.7';
   let isDownloadingUpdate = false;
 
   if (api && api.getAppVersion) {
@@ -2761,7 +2842,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           await api.downloadUpdate({
             downloadUrl: updateInfo.downloadUrl,
-            version: updateInfo.latestVersion
+            version: updateInfo.latestVersion,
+            downloadSize: updateInfo.downloadSize
           });
         } catch (err) {
           isDownloadingUpdate = false;
@@ -2825,24 +2907,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (updaterProgressWrapper) updaterProgressWrapper.style.display = 'block';
         if (updaterProgressPercent) updaterProgressPercent.textContent = '100%';
         if (updaterProgressFill) updaterProgressFill.style.width = '100%';
-        if (updaterProgressLabel) updaterProgressLabel.textContent = '✅ ទាញយកចប់សព្វគ្រប់ 100%!';
-        if (updaterProgressSpeed) updaterProgressSpeed.textContent = '✅ រួចរាល់';
+        if (updaterProgressLabel) updaterProgressLabel.textContent = '✅ ទាញយកចប់ ១០០%! កំពុង Restart ដោយស្វ័យប្រវត្តិ...';
+        if (updaterProgressSpeed) updaterProgressSpeed.textContent = '🔄 កំពុង Restart...';
 
-        if (updaterModalTitle) updaterModalTitle.textContent = '🎉 ទាញយកចប់សព្វគ្រប់!';
-        if (updaterModalDesc) updaterModalDesc.textContent = `កំណែថ្មី v${data.version || ''} ត្រូវបានទាញយករួចរាល់។ សូមចុច ដំឡើង និង Restart ដើម្បីអនុវត្តការអាប់ដេតភ្លាមៗ!`;
+        if (updaterModalTitle) updaterModalTitle.textContent = '🎉 ទាញយកចប់ ១០០%!';
+        if (updaterModalDesc) updaterModalDesc.textContent = `បានទាញយកកំណែថ្មី v${data.version || ''} រួចរាល់។ កម្មវិធីនឹងបិទ និង Restart ទៅកាន់កំណែថ្មីដោយស្វ័យប្រវត្តក្នុងពេលបន្តិចទៀតនេះ...`;
 
         if (btnUpdaterAction) {
-          btnUpdaterAction.disabled = false;
-          btnUpdaterAction.style.opacity = '1';
-          btnUpdaterAction.textContent = '🔄 ដំឡើង និង Restart ឥឡូវនេះ';
+          btnUpdaterAction.disabled = true;
+          btnUpdaterAction.style.opacity = '0.9';
+          btnUpdaterAction.textContent = '⏳ កំពុង Restart ស្វ័យប្រវត្តិ...';
           btnUpdaterAction.style.background = 'linear-gradient(135deg, #10b981, #059669)';
           btnUpdaterAction.onclick = () => {
-            btnUpdaterAction.disabled = true;
-            btnUpdaterAction.textContent = '⏳ កំពុងដំណើរការ...';
             api.installUpdate();
           };
         }
-        showToast(`🎉 បានទាញយកកំណែថ្មី v${data.version || ''} រួចរាល់!`);
+        showToast(`🎉 ទាញយកចប់ ១០០%! កំពុង Restart ទៅកាន់ v${data.version || ''}...`);
+
+        // Fully automated seamless update: Automatically close and restart after 1.2s!
+        setTimeout(() => {
+          if (api && api.installUpdate) {
+            api.installUpdate();
+          }
+        }, 1200);
       } else if (data.status === 'error') {
         isDownloadingUpdate = false;
         showToast(`❌ ${data.message || data.error}`);
@@ -2866,6 +2953,518 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Run silent check 1.5 seconds after app loads
   setTimeout(checkSilentUpdate, 1500);
+
+  // ===================================================================
+  // 19. TV THEATER LOUNGE & INSTANT DOWNLOAD (TIKTOK AUTO-FLOW)
+  // ===================================================================
+  const tvVideo = document.getElementById('tv-video');
+  const tvVideoWrapper = document.getElementById('tv-video-wrapper');
+  const tvScreenEmpty = document.getElementById('tv-screen-empty');
+  const tvEpPlayingName = document.getElementById('tv-ep-playing-name');
+  const btnTvFullscreen = document.getElementById('btn-tv-fullscreen');
+  const tvHeroPoster = document.getElementById('tv-hero-poster');
+  const tvHeroTitle = document.getElementById('tv-hero-title');
+  const tvHeroEpBadge = document.getElementById('tv-hero-ep-badge');
+  const tvHeroTags = document.getElementById('tv-hero-tags');
+  const tvHeroSynopsis = document.getElementById('tv-hero-synopsis');
+  const tvShelfCount = document.getElementById('tv-shelf-count');
+  const tvEpisodesChips = document.getElementById('tv-episodes-chips');
+  const btnTvDownloadAll = document.getElementById('btn-tv-download-all');
+  const btnTvDownloadCurrent = document.getElementById('btn-tv-download-current');
+  const btnTvFavorite = document.getElementById('btn-tv-favorite');
+  const btnTvCast = document.getElementById('btn-tv-cast');
+  const tvDramasGrid = document.getElementById('tv-dramas-grid');
+  const inputTvSearch = document.getElementById('input-tv-search');
+  const btnTvSearchGo = document.getElementById('btn-tv-search-go');
+  const tvCategoryPills = document.querySelectorAll('#tv-categories-bar .cat-pill');
+  const btnModalWatchTv = document.getElementById('btn-modal-watch-tv');
+  const btnPlayerDownloadNow = document.getElementById('btn-player-download-now');
+  const btnTiktokPrev = document.getElementById('btn-tiktok-prev');
+  const btnTiktokNext = document.getElementById('btn-tiktok-next');
+  const tvTiktokModePill = document.getElementById('tv-tiktok-mode-pill');
+
+  let currentTvDrama = null;
+  let currentTvEpisodeIndex = 1;
+  let currentTvHls = null;
+  let selectedTvCat = 'trending';
+  let isTvLoaded = false;
+  let tvDramaList = [];
+  let currentTvDramaIndex = 0;
+  let isSwitchingDrama = false;
+
+  function initTvView() {
+    if (!isTvLoaded) {
+      loadTvDramas(selectedTvCat);
+      isTvLoaded = true;
+    }
+  }
+
+  // Smooth TikTok Transition: Next or Previous Drama
+  async function stepTvDrama(delta = 1) {
+    if (tvDramaList.length === 0 || isSwitchingDrama) return;
+    isSwitchingDrama = true;
+
+    let targetIdx = currentTvDramaIndex + delta;
+    if (targetIdx < 0) targetIdx = tvDramaList.length - 1;
+    if (targetIdx >= tvDramaList.length) targetIdx = 0;
+
+    currentTvDramaIndex = targetIdx;
+    const nextDrama = tvDramaList[targetIdx];
+
+    // Visual smooth slide transition
+    if (tvVideoWrapper) {
+      tvVideoWrapper.style.transition = 'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease-out';
+      tvVideoWrapper.style.transform = delta > 0 ? 'translateY(-20px) scale(0.98)' : 'translateY(20px) scale(0.98)';
+      tvVideoWrapper.style.opacity = '0.75';
+    }
+
+    await playTvDrama(nextDrama, 1, true);
+
+    setTimeout(() => {
+      if (tvVideoWrapper) {
+        tvVideoWrapper.style.transform = 'translateY(0) scale(1)';
+        tvVideoWrapper.style.opacity = '1';
+      }
+      isSwitchingDrama = false;
+    }, 250);
+
+    showToast(`⚡ ${delta > 0 ? 'រឿងបន្ទាប់' : 'រឿងមុន'}: ${nextDrama.title}`);
+  }
+
+  // TikTok Controls Binding
+  if (btnTiktokNext) {
+    btnTiktokNext.onclick = (e) => {
+      e.stopPropagation();
+      stepTvDrama(1);
+    };
+  }
+  if (btnTiktokPrev) {
+    btnTiktokPrev.onclick = (e) => {
+      e.stopPropagation();
+      stepTvDrama(-1);
+    };
+  }
+
+  // Keyboard navigation & Wheel scrolling in TV mode (TikTok-like Up/Down arrow)
+  window.addEventListener('keydown', (e) => {
+    if (currentView !== 'tv') return;
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+    if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+      e.preventDefault();
+      stepTvDrama(1);
+    } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+      e.preventDefault();
+      stepTvDrama(-1);
+    }
+  });
+
+  // Mouse wheel quick switch on video screen
+  if (tvVideoWrapper) {
+    let wheelCooldown = false;
+    tvVideoWrapper.addEventListener('wheel', (e) => {
+      if (wheelCooldown) return;
+      if (Math.abs(e.deltaY) > 35) {
+        wheelCooldown = true;
+        if (e.deltaY > 0) stepTvDrama(1);
+        else stepTvDrama(-1);
+        setTimeout(() => { wheelCooldown = false; }, 400);
+      }
+    }, { passive: true });
+  }
+
+  // Auto-play next episode or next drama when video finishes (Seamless Continuous Playing)
+  if (tvVideo) {
+    tvVideo.addEventListener('ended', () => {
+      if (currentTvDrama && currentTvDrama.allEpisodes && currentTvEpisodeIndex < currentTvDrama.allEpisodes.length) {
+        // Play next episode in same drama
+        playTvEpisode(currentTvEpisodeIndex + 1);
+      } else {
+        // Finished drama, seamlessly auto-advance to next drama (TikTok flow)
+        stepTvDrama(1);
+      }
+    });
+  }
+
+  async function loadTvDramas(cat = 'trending', keyword = '') {
+    if (!tvDramasGrid) return;
+    tvDramasGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--gold-300);">
+        ⏳ កំពុងទាញយកភាពយន្តភាគ TV...
+      </div>
+    `;
+
+    try {
+      let format = 'all';
+      let genre = 'all';
+      let ratio = 'all';
+
+      if (cat === 'new-releases') {
+        format = 'new-releases';
+      } else if (cat === 'real-drama') {
+        format = 'real-drama';
+      } else if (cat === 'comic') {
+        format = 'comic';
+      } else if (cat === 'tv-series') {
+        keyword = keyword || 'tv';
+      } else if (cat === '16:9') {
+        ratio = '16:9';
+      } else if (cat === 'ancient') {
+        genre = 'pure-ancient';
+      } else if (cat === 'modern') {
+        genre = '总裁';
+      } else if (cat === 'comedy') {
+        genre = 'pure-comedy';
+      }
+
+      const res = await api.searchDramas({
+        keyword,
+        page: 1,
+        format,
+        genre,
+        ratio,
+        sort: 'popular'
+      });
+
+      const dramas = res.dramas || [];
+      if (dramas.length === 0) {
+        tvDramasGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
+            មិនមានរឿងក្នុងជម្រើសនេះទេ
+          </div>
+        `;
+        return;
+      }
+
+      tvDramaList = dramas;
+
+      tvDramasGrid.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+
+      dramas.forEach((drama, dIndex) => {
+        const card = document.createElement('div');
+        card.className = 'drama-card';
+        card.innerHTML = `
+          <div class="card-poster-wrap">
+            <img src="${drama.cover || 'logo_preview.png'}" alt="${drama.title}" class="card-poster" loading="lazy">
+            <span class="card-badge-ep">${drama.episodesCount || 80} ភាគ</span>
+            <div class="card-hover-overlay">
+              <span class="overlay-play-ico">📺</span>
+              <span style="font-size:11px; font-weight:800; color:#fff; text-shadow:0 2px 4px #000;">ចាក់លើ TV</span>
+            </div>
+          </div>
+          <div class="card-info">
+            <h4 class="card-title">${drama.title}</h4>
+            <div class="card-meta-row">
+              <span class="meta-tag">📺 TV Mode</span>
+              <span class="meta-ep">${drama.episodesCount || 80} ភាគ</span>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          currentTvDramaIndex = dIndex;
+          playTvDrama(drama, 1);
+          const tvHero = document.querySelector('.tv-hero-stage');
+          if (tvHero) tvHero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        fragment.appendChild(card);
+      });
+
+      tvDramasGrid.appendChild(fragment);
+
+      if (!currentTvDrama && dramas.length > 0) {
+        currentTvDramaIndex = 0;
+        playTvDrama(dramas[0], 1, false);
+      }
+    } catch (e) {
+      console.warn('Error loading TV dramas:', e);
+      tvDramasGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #ef4444;">
+          បរាជ័យក្នុងការទាញយកបញ្ជី TV
+        </div>
+      `;
+    }
+  }
+
+  // Category switching in TV view
+  if (tvCategoryPills) {
+    tvCategoryPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        tvCategoryPills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        selectedTvCat = pill.dataset.tvCat || 'trending';
+        loadTvDramas(selectedTvCat, (inputTvSearch && inputTvSearch.value) || '');
+      });
+    });
+  }
+
+  // TV Search
+  if (btnTvSearchGo && inputTvSearch) {
+    const doTvSearch = () => {
+      const q = inputTvSearch.value.trim();
+      loadTvDramas(selectedTvCat, q);
+    };
+    btnTvSearchGo.onclick = doTvSearch;
+    inputTvSearch.onkeydown = (e) => {
+      if (e.key === 'Enter') doTvSearch();
+    };
+  }
+
+  // Play a Drama in the TV Lounge
+  async function playTvDrama(drama, episodeIndex = 1, autoPlay = true) {
+    if (!drama) return;
+    currentTvDrama = drama;
+    currentTvEpisodeIndex = episodeIndex;
+
+    // Update Hero Sidebar
+    if (tvHeroPoster) tvHeroPoster.src = drama.cover || 'logo_preview.png';
+    if (tvHeroTitle) tvHeroTitle.textContent = drama.title || 'Hongguo TV Drama';
+    if (tvHeroEpBadge) tvHeroEpBadge.textContent = `${drama.episodesCount || 80} ភាគ`;
+    if (tvHeroSynopsis) tvHeroSynopsis.textContent = drama.content || drama.intro || `${drama.title} - ភាពយន្តភាគច្បាស់ 1080P Full HD។`;
+    if (tvHeroTags) {
+      tvHeroTags.innerHTML = `
+        <span class="tv-tag-pill">🔥 1080P VIP</span>
+        <span class="tv-tag-pill">${drama.category || 'ពេញនិយម'}</span>
+        <span class="tv-tag-pill">✅ មានគ្រប់ភាគ</span>
+      `;
+    }
+
+    if (tvEpisodesChips) {
+      tvEpisodesChips.innerHTML = '<div style="color:var(--gold-300); font-size:12px; padding:10px;">⏳ កំពុងរៀបចំភាគទាំងអស់...</div>';
+    }
+
+    try {
+      const res = await api.getDramaDetail({ id: drama.id, title: drama.title });
+      if (res && res.success && res.drama) {
+        currentTvDrama = res.drama;
+      }
+    } catch (_) {}
+
+    const episodes = currentTvDrama.allEpisodes || [];
+    if (tvShelfCount) tvShelfCount.textContent = `${episodes.length} ភាគ`;
+
+    // Render Episode Chips
+    if (tvEpisodesChips) {
+      tvEpisodesChips.innerHTML = '';
+      const chipFrag = document.createDocumentFragment();
+
+      episodes.forEach(ep => {
+        const pill = document.createElement('button');
+        pill.className = 'tv-ep-pill' + (ep.index === episodeIndex ? ' playing' : '');
+        pill.textContent = ep.title || `ភាគ ${ep.index < 10 ? '0' + ep.index : ep.index}`;
+        pill.onclick = () => {
+          playTvEpisode(ep.index);
+        };
+        chipFrag.appendChild(pill);
+      });
+
+      tvEpisodesChips.appendChild(chipFrag);
+    }
+
+    if (autoPlay) {
+      playTvEpisode(episodeIndex);
+    }
+  }
+
+  // Play specific episode in the TV video screen
+  async function playTvEpisode(epIndex) {
+    if (!currentTvDrama) return;
+    currentTvEpisodeIndex = epIndex;
+
+    const episodes = currentTvDrama.allEpisodes || [];
+    const ep = episodes.find(e => e.index === epIndex) || episodes[epIndex - 1] || { index: epIndex, title: `ភាគ ${epIndex}` };
+
+    // Highlight playing chip
+    if (tvEpisodesChips) {
+      const pills = tvEpisodesChips.querySelectorAll('.tv-ep-pill');
+      pills.forEach((p, idx) => {
+        if (idx + 1 === epIndex) p.classList.add('playing');
+        else p.classList.remove('playing');
+      });
+    }
+
+    if (tvEpPlayingName) {
+      tvEpPlayingName.textContent = `▶️ ${currentTvDrama.title} • ${ep.title || 'ភាគ ' + epIndex}`;
+    }
+
+    if (tvScreenEmpty) tvScreenEmpty.style.display = 'none';
+
+    // Stream resolution
+    try {
+      let streamUrl = ep.url;
+      if (!streamUrl || streamUrl.startsWith('hongguo://')) {
+        const resolved = await api.resolvePreview({
+          vid: ep.vid,
+          dramaId: currentTvDrama.id,
+          episodeIndex: ep.index,
+          dramaTitle: currentTvDrama.title
+        });
+        if (resolved && resolved.success && resolved.url) {
+          streamUrl = resolved.url;
+        }
+      }
+
+      if (streamUrl && tvVideo) {
+        if (streamUrl.includes('.m3u8')) {
+          if (Hls.isSupported()) {
+            if (currentTvHls) currentTvHls.destroy();
+            currentTvHls = new Hls();
+            currentTvHls.loadSource(streamUrl);
+            currentTvHls.attachMedia(tvVideo);
+            tvVideo.play().catch(() => {});
+          } else if (tvVideo.canPlayType('application/vnd.apple.mpegurl')) {
+            tvVideo.src = streamUrl;
+            tvVideo.play().catch(() => {});
+          }
+        } else {
+          tvVideo.src = streamUrl;
+          tvVideo.play().catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn('TV episode play error:', err);
+      showToast(`⚠️ មិនអាចចាក់វីដេអូភាគ ${epIndex} បានទេ`);
+    }
+  }
+
+  // ONE-CLICK ADD TO DOWNLOAD: ALL EPISODES
+  if (btnTvDownloadAll) {
+    btnTvDownloadAll.onclick = async () => {
+      if (!currentTvDrama) {
+        showToast('⚠️ សូមជ្រើសរើសរឿងជាមុនសិន');
+        return;
+      }
+      const episodes = currentTvDrama.allEpisodes || [];
+      if (episodes.length === 0) {
+        showToast('⚠️ មិនទាន់មានទិន្នន័យភាគសម្រាប់ទាញយកទេ');
+        return;
+      }
+
+      const tasks = episodes.map(ep => ({
+        dramaTitle: currentTvDrama.title,
+        dramaId: currentTvDrama.id,
+        episodeIndex: ep.index,
+        episodeTitle: ep.title,
+        url: ep.url,
+        fallbackUrl: ep.fallbackUrl,
+        vid: ep.vid,
+        cover: currentTvDrama.cover,
+        autoStart: true
+      }));
+
+      await api.addBatchDownload(tasks);
+      showToast(`✅ បាន Add គ្រប់ភាគទាំងអស់ (${tasks.length} ភាគ) ទៅកន្លែង Download រួចរាល់!`);
+    };
+  }
+
+  // ONE-CLICK ADD TO DOWNLOAD: CURRENT EPISODE
+  if (btnTvDownloadCurrent) {
+    btnTvDownloadCurrent.onclick = async () => {
+      if (!currentTvDrama) {
+        showToast('⚠️ សូមជ្រើសរើសរឿងជាមុនសិន');
+        return;
+      }
+      const episodes = currentTvDrama.allEpisodes || [];
+      const ep = episodes.find(e => e.index === currentTvEpisodeIndex) || episodes[currentTvEpisodeIndex - 1] || { index: currentTvEpisodeIndex, title: `ភាគ ${currentTvEpisodeIndex}` };
+
+      await api.addDownload({
+        dramaTitle: currentTvDrama.title,
+        dramaId: currentTvDrama.id,
+        episodeIndex: ep.index,
+        episodeTitle: ep.title,
+        url: ep.url,
+        fallbackUrl: ep.fallbackUrl,
+        vid: ep.vid,
+        cover: currentTvDrama.cover,
+        autoStart: true
+      });
+
+      showToast(`✅ បាន Add ${currentTvDrama.title} - ${ep.title} ទៅកន្លែង Download រួចរាល់!`);
+    };
+  }
+
+  // TV FAVORITE BUTTON
+  if (btnTvFavorite) {
+    btnTvFavorite.onclick = async () => {
+      if (!currentTvDrama) return;
+      const res = await api.toggleFavorite({
+        id: currentTvDrama.id,
+        title: currentTvDrama.title,
+        cover: currentTvDrama.cover,
+        episodesCount: (currentTvDrama.allEpisodes && currentTvDrama.allEpisodes.length) || 80,
+        category: currentTvDrama.category || 'TV VIP'
+      });
+      if (res && res.isFavorite) {
+        btnTvFavorite.classList.add('active');
+        showToast(`⭐ បានបញ្ចូល "${currentTvDrama.title}" ក្នុងបញ្ជីពេញចិត្ត!`);
+      } else {
+        btnTvFavorite.classList.remove('active');
+        showToast(`ដកចេញពីបញ្ជីពេញចិត្ត`);
+      }
+    };
+  }
+
+  // TV FULLSCREEN BUTTON
+  if (btnTvFullscreen && tvVideo) {
+    btnTvFullscreen.onclick = () => {
+      if (tvVideo.requestFullscreen) tvVideo.requestFullscreen();
+      else if (tvVideo.webkitRequestFullscreen) tvVideo.webkitRequestFullscreen();
+    };
+  }
+
+  // TV SMART CAST BUTTON (DLNA)
+  if (btnTvCast) {
+    btnTvCast.onclick = async () => {
+      showToast('🔍 កំពុង Scan រក Smart TV ក្នុងបណ្តាញ WiFi ផ្ទះ...');
+      const res = await api.discoverTvDevices();
+      if (!res || !res.devices || res.devices.length === 0) {
+        showToast('⚠️ មិនទាន់រកឃើញ Smart TV លើបណ្តាញ WiFi នៅឡើយទេ។ សូមប្រាកដថាទូរទស្សន៍បានភ្ជាប់ WiFi ជាមួយកុំព្យូទ័រ។');
+        return;
+      }
+      const dev = res.devices[0];
+      showToast(`📺 បានរកឃើញ "${dev.name}"! កំពុងបញ្ជូនវីដេអូ...`);
+      await api.castToTv({
+        deviceId: dev.id,
+        title: currentTvDrama ? currentTvDrama.title : 'Hongguo TV Drama'
+      });
+      showToast(`🎉 បានបញ្ជូនទៅចាក់លើ "${dev.name}" រួចរាល់!`);
+    };
+  }
+
+  // WATCH ON TV FROM DETAIL MODAL
+  if (btnModalWatchTv) {
+    btnModalWatchTv.onclick = () => {
+      if (!currentDetailDrama) return;
+      if (modalDetail) modalDetail.classList.remove('active');
+      switchView('tv');
+      playTvDrama(currentDetailDrama, 1, true);
+    };
+  }
+
+  // ADD TO DOWNLOAD FROM PLAYER MODAL
+  if (btnPlayerDownloadNow) {
+    btnPlayerDownloadNow.onclick = async () => {
+      if (currentDetailDrama && currentAllEpisodes && currentAllEpisodes.length > 0) {
+        const ep = currentAllEpisodes[0];
+        await api.addDownload({
+          dramaTitle: currentDetailDrama.title,
+          dramaId: currentDetailDrama.id,
+          episodeIndex: ep.index,
+          episodeTitle: ep.title,
+          url: ep.url,
+          fallbackUrl: ep.fallbackUrl,
+          vid: ep.vid,
+          cover: currentDetailDrama.cover,
+          autoStart: true
+        });
+        showToast(`📥 បាន Add "${currentDetailDrama.title}" ទៅកន្លែង Download រួចរាល់!`);
+      } else {
+        showToast('📥 បានដាក់ចូលទៅកាន់កន្លែង Download!');
+      }
+    };
+  }
 
   // 18. Kickoff Initial Hongguo Catalog
   loadHongguoDramas();

@@ -89,6 +89,11 @@ const apiBridge = {
   savePaymentConfig: (cfg) => ipcRenderer.invoke('khqr:save-config', cfg),
   autoActivateLicense: (deviceId) => ipcRenderer.invoke('khqr:auto-activate', deviceId),
 
+  // TV & Smart TV DLNA Casting
+  discoverTvDevices: () => ipcRenderer.invoke('tv:discover-devices'),
+  castToTv: (params) => ipcRenderer.invoke('tv:cast', params),
+  stopCastTv: () => ipcRenderer.invoke('tv:stop-cast'),
+
   // Event Listeners
   onQueueUpdate: (callback) => {
     let debounceTimer = null;
